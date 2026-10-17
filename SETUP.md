@@ -90,3 +90,7 @@ Token refresh and RFC 7009 revocation share `/oauth/token`; clients discover the
 Permissions are `cms:read` for administrative reads, `cms:write` for editing, and `offline_access` for refreshing a connection. Read is the default; editing requires explicit consent. Write tools retain their preview-and-confirm behavior and audit logging. Sensitive form answers remain excluded from MCP regardless of the grant. Administrators manage revocation through **Connected apps** at `/admin/connections`. Access tokens expire after one hour; refresh tokens after 30 days. Existing API tokens remain independently managed in `/admin/tokens`.
 
 A deployment needs the KV binding, Access configuration, and current source before OAuth will work remotely. Verify discovery, browser consent, read-only versus editing scope enforcement, refresh, and revocation against the intended environment. Local automated tests do not prove a successful connection in a hosted ChatGPT or Claude account. See [plugin connection instructions](docs/PLUGINS.md#connect-a-site-when-needed).
+
+## Cost requirement
+
+Follow the [zero-cost deployment policy](docs/COSTS.md). OAuth supports Workers Free with KV; verify the actual account is on the Free plan before enabling it. Free-plan quotas fail closed rather than charge overages. Do not upgrade or enable paid services. Existing R2 and other products have separate pricing, so the whole account must be checked before claiming a zero Cloudflare bill. If account billing cannot be verified, keep OAuth unconfigured.

@@ -17,3 +17,5 @@ Read `skills/orangecms-setup/SKILL.md` for project setup or source customization
 Agent packaging uses portable `plugin.json`, `.claude-plugin/` metadata, and `.agents/plugins/marketplace.json`. Keep skills self-contained and package only manifests, skills/resources, and the license. Site URLs and tokens are connected separately, never baked into the distributable.
 
 The Cloudflare adapter wrapper dispatches public OAuth protocol endpoints before SvelteKit so native token exchanges work while framework CSRF checks remain enabled. Preserve that wrapper and validate it through compiled Worker smoke tests.
+
+Cost requirement: follow `docs/COSTS.md`. Use Workers Free for zero-cost OAuth; verify the actual deployment account before provisioning/activation. Never upgrade plans, enable paid services, or assume included paid-plan allowances prevent overages. If billing cannot be verified, leave OAuth unconfigured and explain the limitation. Local tests must remain local.

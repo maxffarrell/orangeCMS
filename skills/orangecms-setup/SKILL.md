@@ -38,6 +38,8 @@ Local development bypasses Cloudflare Access. Keep that server local. Cloud reso
 
 ## Configure production when requested
 
+Cost requirement: follow the project's [zero-cost deployment policy](https://github.com/maxffarrell/orangeCMS/blob/main/docs/COSTS.md). Verify the deployment account uses Workers Free before provisioning or enabling OAuth KV. Do not upgrade plans or enable paid services. Free KV quotas reject excess operations; paid-plan allowances can incur overages. Existing R2 and other products have separate billing, so do not claim the entire account is free without checking them. If billing cannot be verified, leave OAuth unconfigured and report that limitation. Local setup and tests remain local.
+
 Use installation-owned D1/R2 resources and Wrangler configuration, preserving bindings `DB`, `FILES`, and `ASSETS`. Never copy a different site's resource IDs, content, secrets, or database snapshots. Apply the project's migrations to the selected database; a consumer with an existing migration history must plan upgrades rather than replay a fresh baseline blindly.
 
 Configure Access team domain and audience and protect `/admin` and `/api/upload` at the edge. Production Worker authentication verifies Access JWTs and fails closed when unconfigured. Set `FORM_DATA_KEY` to a base64-encoded 32-byte secret for sensitive form answers. Configure notification sender, destination setting, and `EMAIL` binding only when notifications are needed. Sensitive answers are encrypted and excluded from emails and MCP; without the key, sensitive controls are withheld.

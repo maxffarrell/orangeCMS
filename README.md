@@ -8,6 +8,8 @@ Create collections with custom fields, publish entries and pages, build forms, m
 
 Install the orangeCMS skills through Claude or ChatGPT/Codex, then run the setup workflow in your own project. Claude Code can install it with `/plugin install orangecms --marketplace maxffarrell/orangeCMS`. See [plugin installation](docs/PLUGINS.md) for marketplace commands, the downloadable package, and optional per-site MCP connections.
 
+For a zero-cost deployment, follow the [Free-plan requirements and billing checks](docs/COSTS.md). No paid OAuth provider is required.
+
 ## Local development
 
 Use the Node version in `.node-version` and pnpm version in `package.json`.
