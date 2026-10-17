@@ -1,0 +1,32 @@
+name: CMS smoke test
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: cms-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
+jobs:
+  cms-smoke:
+    name: CMS content smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Audit publishable source
+        run: pnpm check:public
+      - name: Test routing, content models, rendering and publication guardrails
+        run: pnpm test:unit
+      - run: pnpm check
+      - name: Smoke test production CMS
+        run: pnpm build
+      - name: Verify configurable public routes
+        run: pnpm test:routes

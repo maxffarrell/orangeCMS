@@ -1,0 +1,32 @@
+packages:
+  - "."
+
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true
+
+minimumReleaseAgeExclude:
+  - cookie@0.7.0
+  - '@cloudflare/workerd-darwin-64@1.20260828.1'
+  - '@cloudflare/workerd-darwin-arm64@1.20260828.1'
+  - '@cloudflare/workerd-linux-64@1.20260828.1'
+  - '@cloudflare/workerd-linux-arm64@1.20260828.1'
+  - '@cloudflare/workerd-windows-64@1.20260828.1'
+  - '@cloudflare/workers-types@5.20260828.1'
+  - miniflare@5.20260828.0-alpha
+  - workerd@1.20260828.1
+  - wrangler@4.127.1
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - workerd
+
+overrides:
+  cookie@<0.7.0: ^2.0.0
+  nanoid: ^6.0.1
+  postcss@<=8.5.17: ^8.5.18
+  postcss@<=8.5.22: ^8.5.23
+  sharp@<0.35.0: ^0.35.0
+  undici@>=7.0.0 <7.29.0: ^8.0.0
