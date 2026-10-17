@@ -66,7 +66,7 @@ Both templates are optional, are not auto-discovered, and are excluded from the 
 
 ## Release ZIP and verification
 
-Download the plugin release under the GitHub tag [`plugin-v1.1.0`](https://github.com/maxffarrell/orangeCMS/releases/tag/plugin-v1.1.0), with `orangecms-plugin.zip` as its downloadable asset. You can build the same minimal archive locally:
+Download the plugin release under the GitHub tag [`plugin-v1.1.1`](https://github.com/maxffarrell/orangeCMS/releases/tag/plugin-v1.1.1), with `orangecms-plugin.zip` as its downloadable asset. You can build the same minimal archive locally:
 
 ```sh
 pnpm plugin:package
@@ -76,3 +76,5 @@ node --test scripts/plugin.test.mjs
 The build prints a SHA-256 checksum and writes `dist/orangecms-plugin.zip`. It uses Node's standard library; archive verification tests require the standard `unzip` command. The ZIP contains only portable and Claude plugin manifests, MIT license, and skill resources. Application source, databases, migrations, environment files, MCP connection templates, and marketplace catalogs are excluded. Identical inputs produce identical ZIP bytes.
 
 Use the repository marketplaces above for installation. A release ZIP is a distributable package, not proof of approval or listing in a host's public directory.
+
+Before any cloud setup, follow the [zero-cost deployment policy](COSTS.md). Installing the plugin does not authorize a paid plan or paid overages.
