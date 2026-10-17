@@ -34,3 +34,7 @@ Pin this repository as a Git submodule in a private site repository. Compose its
 The schema migration filenames are stable. For an existing database, preserve its migration history and seed data in the consumer; do not replay starter seeds over a live site. Review and pin core updates before deploying them.
 
 Dependency versions and lockfile are pinned to the source application's stack. Shared code changes should pass both standalone and consuming-site smoke tests.
+
+## License
+
+[MIT](LICENSE)
