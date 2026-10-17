@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { getLocalTimeZone, parseDate, today, type DateValue } from '@internationalized/date';
+	import {
+		getLocalTimeZone,
+		parseDate,
+		today,
+		type DateValue,
+	} from '@internationalized/date';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Calendar } from '#lib/components/ui/calendar/index.js';
 	import * as Popover from '#lib/components/ui/popover/index.js';
@@ -15,10 +20,18 @@
 		invalid?: boolean;
 		onchange?: (iso: string) => void;
 	}
-	let { id, name, value = '', range, invalid = false, onchange }: Props = $props();
+	let {
+		id,
+		name,
+		value = '',
+		range,
+		invalid = false,
+		onchange,
+	}: Props = $props();
 
+	// Match the server's date-only validation boundary in every browser timezone.
 	const tz = getLocalTimeZone();
-	const now = today(tz);
+	const now = today('UTC');
 	const minValue = $derived(range === 'future' ? now : parseDate('1900-01-01'));
 	const maxValue = $derived(range === 'past' ? now : now.add({ years: 20 }));
 
@@ -34,8 +47,10 @@
 	let date = $state<DateValue | undefined>(untrack(() => parse(value)));
 	const label = $derived(
 		date
-			? new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date.toDate(tz))
-			: 'Pick a date'
+			? new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(
+					date.toDate(tz),
+				)
+			: 'Pick a date',
 	);
 </script>
 
@@ -51,7 +66,9 @@
 				type="button"
 				variant="outline"
 				aria-invalid={invalid}
-				class="w-full justify-start font-normal {date ? '' : 'text-muted-foreground'}"
+				class="w-full justify-start font-normal {date
+					? ''
+					: 'text-muted-foreground'}"
 			>
 				<CalendarIcon data-icon="inline-start" />
 				{label}

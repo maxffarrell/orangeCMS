@@ -40,7 +40,7 @@ For Workers Builds, use `pnpm build` and `pnpm exec wrangler deploy`. GitHub Act
 
 ## Forms and privacy
 
-Interactive forms use configurable field schemas, validation, conditional fields, and a submission inbox. Set `FORM_DATA_KEY` to a base64-encoded 32-byte secret to collect sensitive answers; without it, sensitive fields are withheld from the public form. Sensitive answers are encrypted in storage and omitted from notification emails and MCP responses. Configure the privacy page, consent text, retention, and administrative access for your installation.
+Interactive forms use configurable field schemas, validation, conditional fields, and a submission inbox. Date-only past/future constraints use an inclusive UTC calendar day in both the picker and server validation. Set `FORM_DATA_KEY` to a base64-encoded 32-byte secret to collect sensitive answers; without it, sensitive fields are withheld from the public form. Sensitive answers are encrypted in storage and omitted from notification emails and MCP responses. Configure the privacy page, consent text, retention, and administrative access for your installation.
 
 For notifications, configure `FORM_EMAIL_FROM`, Cloudflare Email Routing, and the `EMAIL` binding. Set the destination using the configured notification setting. Notification delivery failure does not discard a form submission.
 

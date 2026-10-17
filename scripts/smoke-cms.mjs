@@ -45,6 +45,9 @@ const formsPath = formsHref();
 const formPath = formsHref('smoke-form');
 const notificationKey = site.formNotificationSetting;
 const editableSetting = site.settingsFields[0]?.key;
+const publicSetting = site.settingsFields.find((field) =>
+	site.publicSettings.includes(field.key),
+)?.key;
 const sqlString = (value) => "'" + String(value).replaceAll("'", "''") + "'";
 async function homePage() {
 	if (homePath) await page(homePath, ['Smoke CMS Home']);
@@ -217,7 +220,7 @@ try {
     DELETE FROM form_submissions; DELETE FROM form_schemas; DELETE FROM forms; DELETE FROM api_tokens; DELETE FROM entries; DELETE FROM collections;
     DELETE FROM sqlite_sequence WHERE name IN ('forms','api_tokens','form_submissions','entries');
     INSERT OR REPLACE INTO settings(key,value) VALUES (${sqlString(notificationKey)},'smoke-settings@example.test');
-    UPDATE pages SET title = 'Smoke CMS Home', content = 'Smoke CMS page content from D1' WHERE slug = 'home';
+    UPDATE pages SET title = 'Smoke CMS Home', content = ${sqlString('Smoke CMS page content from D1' + (publicSetting ? ' {{setting:' + publicSetting + '}}' : ''))} WHERE slug = 'home';
     INSERT INTO collections (slug,title,fields) VALUES (${sqlString(model)},'Smoke CMS Collection','[{"key":"summary","label":"Summary","type":"textarea","required":true},{"key":"resource","label":"Resource","type":"url"},{"key":"priority","label":"Priority","type":"number"},{"key":"reviewed","label":"Reviewed","type":"boolean"}]');
     INSERT INTO entries (collection,slug,title,content,fields,active) VALUES (${sqlString(model)},'smoke-entry','Smoke CMS Entry','Smoke entry detail from D1','{"summary":"Smoke summary","priority":2,"reviewed":false}',1), (${sqlString(model)},'draft-entry','Draft-only marker','Draft content','{"summary":"Draft summary"}',0);
     INSERT INTO forms (title,description,file_path) VALUES ('Smoke CMS Form','Smoke form description from D1','/files/smoke.pdf');
@@ -406,139 +409,139 @@ try {
 		console.log(
 			'PASS online form validates, stores a response, and shows it in the CMS',
 		);
-		const postAdmin = async (path, values) =>
-			fetch(origin + path, {
-				method: 'POST',
-				redirect: 'manual',
-				headers: {
-					Origin: origin,
-					Accept: 'text/html',
-					'Cf-Access-Jwt-Assertion': adminJwt,
-				},
-				body: new URLSearchParams(values),
-			});
-		assert.equal(
-			(
-				await postAdmin('/admin/collections?/create', {
-					slug: 'scratch-notes',
-					title: 'Scratch Notes',
-				})
-			).status,
-			303,
-		);
-		assert.equal(
-			(
-				await postAdmin('/admin/collections/scratch-notes?/save', {
-					title: 'Scratch Notes',
-					fields: JSON.stringify([
-						{ key: 'score', label: 'Score', type: 'number', required: true },
-					]),
-				})
-			).status,
-			200,
-		);
-		assert.equal(
-			(
-				await postAdmin('/admin/collections/scratch-notes/entries/new?/save', {
-					title: 'First note',
-					slug: 'first-note',
-					field_score: 'bad',
-					active: 'on',
-				})
-			).status,
-			400,
-		);
-		assert.equal(
-			(
-				await postAdmin('/admin/collections/scratch-notes/entries/new?/save', {
-					title: 'First note',
-					slug: 'first-note',
-					field_score: '5',
-					active: 'on',
-				})
-			).status,
-			303,
-		);
-		const noteId = (
-			await d1json(
-				local,
-				"SELECT id FROM entries WHERE collection='scratch-notes' AND slug='first-note'",
-			)
-		)[0].id;
-		assert.equal(
-			(
-				await postAdmin(
-					'/admin/collections/scratch-notes/entries/' + noteId + '?/save',
-					{
-						title: 'Renamed note',
-						slug: 'renamed-note',
-						field_score: '6',
-						active: 'on',
-					},
-				)
-			).status,
-			303,
-		);
-		assert.equal(
-			(
-				await d1json(
-					local,
-					"SELECT id FROM entries WHERE collection='scratch-notes' AND slug='renamed-note'",
-				)
-			)[0].id,
-			noteId,
-		);
-		assert.equal(
-			(
-				await d1json(
-					local,
-					"SELECT COUNT(*) AS count FROM entries WHERE collection='scratch-notes' AND slug='first-note'",
-				)
-			)[0].count,
-			0,
-		);
-		assert.equal(
-			(
-				await postAdmin(
-					'/admin/collections/scratch-notes/entries/' + noteId + '?/delete',
-					{},
-				)
-			).status,
-			303,
-		);
-		assert.equal(
-			(await postAdmin('/admin/collections/scratch-notes?/delete', {})).status,
-			303,
-		);
-		assert.equal(
-			(
-				await postAdmin('/admin/pages?/create', {
-					title: 'Temporary page',
-					slug: 'temporary-page',
-				})
-			).status,
-			303,
-		);
-		assert.equal(
-			(
-				await postAdmin('/admin/pages/temporary-page?/save', {
-					title: 'Edited temporary page',
-					content: 'Edited content',
-				})
-			).status,
-			200,
-		);
-		assert.equal(
-			(await postAdmin('/admin/pages/temporary-page?/delete', {})).status,
-			303,
-		);
-		console.log(
-			'PASS admin collection/schema/entry/page CRUD validates types and preserves IDs on slug changes',
-		);
 	} else
 		console.log(
 			'SKIP interactive form checks: no public form route is configured',
 		);
+	const postAdmin = async (path, values) =>
+		fetch(origin + path, {
+			method: 'POST',
+			redirect: 'manual',
+			headers: {
+				Origin: origin,
+				Accept: 'text/html',
+				'Cf-Access-Jwt-Assertion': adminJwt,
+			},
+			body: new URLSearchParams(values),
+		});
+	assert.equal(
+		(
+			await postAdmin('/admin/collections?/create', {
+				slug: 'scratch-notes',
+				title: 'Scratch Notes',
+			})
+		).status,
+		303,
+	);
+	assert.equal(
+		(
+			await postAdmin('/admin/collections/scratch-notes?/save', {
+				title: 'Scratch Notes',
+				fields: JSON.stringify([
+					{ key: 'score', label: 'Score', type: 'number', required: true },
+				]),
+			})
+		).status,
+		200,
+	);
+	assert.equal(
+		(
+			await postAdmin('/admin/collections/scratch-notes/entries/new?/save', {
+				title: 'First note',
+				slug: 'first-note',
+				field_score: 'bad',
+				active: 'on',
+			})
+		).status,
+		400,
+	);
+	assert.equal(
+		(
+			await postAdmin('/admin/collections/scratch-notes/entries/new?/save', {
+				title: 'First note',
+				slug: 'first-note',
+				field_score: '5',
+				active: 'on',
+			})
+		).status,
+		303,
+	);
+	const noteId = (
+		await d1json(
+			local,
+			"SELECT id FROM entries WHERE collection='scratch-notes' AND slug='first-note'",
+		)
+	)[0].id;
+	assert.equal(
+		(
+			await postAdmin(
+				'/admin/collections/scratch-notes/entries/' + noteId + '?/save',
+				{
+					title: 'Renamed note',
+					slug: 'renamed-note',
+					field_score: '6',
+					active: 'on',
+				},
+			)
+		).status,
+		303,
+	);
+	assert.equal(
+		(
+			await d1json(
+				local,
+				"SELECT id FROM entries WHERE collection='scratch-notes' AND slug='renamed-note'",
+			)
+		)[0].id,
+		noteId,
+	);
+	assert.equal(
+		(
+			await d1json(
+				local,
+				"SELECT COUNT(*) AS count FROM entries WHERE collection='scratch-notes' AND slug='first-note'",
+			)
+		)[0].count,
+		0,
+	);
+	assert.equal(
+		(
+			await postAdmin(
+				'/admin/collections/scratch-notes/entries/' + noteId + '?/delete',
+				{},
+			)
+		).status,
+		303,
+	);
+	assert.equal(
+		(await postAdmin('/admin/collections/scratch-notes?/delete', {})).status,
+		303,
+	);
+	assert.equal(
+		(
+			await postAdmin('/admin/pages?/create', {
+				title: 'Temporary page',
+				slug: 'temporary-page',
+			})
+		).status,
+		303,
+	);
+	assert.equal(
+		(
+			await postAdmin('/admin/pages/temporary-page?/save', {
+				title: 'Edited temporary page',
+				content: 'Edited content',
+			})
+		).status,
+		200,
+	);
+	assert.equal(
+		(await postAdmin('/admin/pages/temporary-page?/delete', {})).status,
+		303,
+	);
+	console.log(
+		'PASS admin collection/schema/entry/page CRUD validates types and preserves IDs on slug changes',
+	);
 	// MCP endpoint: public tools open, admin tools require the bearer token.
 	const rpc = async (method, params, token) => {
 		const response = await fetch(origin + '/mcp', {
@@ -825,6 +828,9 @@ try {
 			headers: { Origin: origin, 'Cf-Access-Jwt-Assertion': adminJwt },
 			body: new URLSearchParams({
 				[editableSetting]: 'smoke-saved@example.test',
+				...(publicSetting && publicSetting !== editableSetting
+					? { [publicSetting]: 'smoke-public-setting-saved' }
+					: {}),
 			}),
 		});
 		assert.equal(saved.status, 200, 'CMS settings save failed');
@@ -839,6 +845,14 @@ try {
 			'smoke-saved@example.test',
 		);
 		console.log('PASS CMS save persisted to D1');
+		if (homePath && publicSetting) {
+			await page(homePath, [
+				publicSetting === editableSetting
+					? 'smoke-saved@example.test'
+					: 'smoke-public-setting-saved',
+			]);
+			console.log('PASS saved public setting reaches rendered page content');
+		}
 	}
 	await homePage();
 
@@ -864,18 +878,54 @@ try {
 		console.log('PASS missing configured page returns 404');
 	}
 
-	const upload = new FormData();
-	upload.set(
-		'file',
+	const uploadFile = (file, prefix = '') => {
+		const body = new FormData();
+		if (file !== undefined) body.set('file', file);
+		if (prefix) body.set('prefix', prefix);
+		return fetch(origin + '/api/upload', {
+			method: 'POST',
+			headers: { Origin: origin, 'Cf-Access-Jwt-Assertion': adminJwt },
+			body,
+		});
+	};
+	for (const [file, prefix, status] of [
+		[undefined, '', 400],
+		[new File([], 'empty.pdf', { type: 'application/pdf' }), '', 400],
+		['not a file', '', 400],
+		[new File(['fixture'], 'fixture.pdf', { type: 'text/plain' }), '', 415],
+		[
+			new File(['fixture'], 'fixture.exe', { type: 'application/pdf' }),
+			'',
+			415,
+		],
+		[
+			new File(['fixture'], 'fixture.svg', { type: 'image/svg+xml' }),
+			'assets/',
+			415,
+		],
+		[
+			new File(['fixture'], 'fixture.pdf', { type: 'application/pdf' }),
+			'../',
+			400,
+		],
+		[
+			new File([new Uint8Array(8 * 1024 * 1024 + 1)], 'large.png', {
+				type: 'image/png',
+			}),
+			'assets/',
+			413,
+		],
+	])
+		assert.equal(
+			(await uploadFile(file, prefix)).status,
+			status,
+			'Invalid upload must be rejected',
+		);
+	const uploaded = await uploadFile(
 		new File(['%PDF-1.7\nsmoke fixture'], 'smoke.pdf', {
 			type: 'application/pdf',
 		}),
 	);
-	const uploaded = await fetch(origin + '/api/upload', {
-		method: 'POST',
-		headers: { Origin: origin, 'Cf-Access-Jwt-Assertion': adminJwt },
-		body: upload,
-	});
 	assert.equal(uploaded.status, 200, 'Authenticated CMS upload failed');
 	const uploadedPath = (await uploaded.json()).path;
 	const stored = await fetch(origin + uploadedPath);
@@ -884,8 +934,37 @@ try {
 		200,
 		'Uploaded file must remain publicly readable',
 	);
+	assert.equal(stored.headers.get('content-type'), 'application/pdf');
 	assert.ok((await stored.text()).includes('smoke fixture'));
-	console.log('PASS authenticated upload persists to local R2');
+	const image = await uploadFile(
+		new File(
+			[
+				Buffer.from(
+					'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jY7cAAAAASUVORK5CYII=',
+					'base64',
+				),
+			],
+			'pixel.png',
+			{ type: 'image/png' },
+		),
+		'assets/',
+	);
+	assert.equal(
+		image.status,
+		200,
+		'Images must upload under a generic storage prefix',
+	);
+	const imageResponse = await fetch(origin + (await image.json()).path);
+	assert.equal(imageResponse.headers.get('content-type'), 'image/png');
+	assert.match(imageResponse.headers.get('cache-control'), /immutable/);
+	assert.equal(
+		(await fetch(origin + '/files/missing-smoke-object')).status,
+		404,
+		'Missing R2 object must return 404',
+	);
+	console.log(
+		'PASS PDF/image uploads persist to local R2 and invalid uploads are rejected',
+	);
 	await stopWorker();
 	delete config.vars.CF_ACCESS_AUD;
 	delete config.vars.FORM_DATA_KEY;
@@ -912,6 +991,54 @@ try {
 		);
 		console.log(
 			'PASS without an encryption key the form does not collect sensitive details',
+		);
+		const injected = await fetch(origin + formPath + '?/submit', {
+			method: 'POST',
+			headers: { Origin: origin },
+			body: new URLSearchParams({
+				f_request: 'No-key request',
+				f_quantity: '1',
+				f_name: 'No-key Respondent',
+				f_email: 'no-key@example.test',
+				f_phone: '555-0100',
+				f_include_reference: 'Yes',
+				f_consent_privacy: 'on',
+				f_consent: 'on',
+				f_private_date: '1985-05-08',
+				f_private_reference: 'injected-sensitive-value',
+				f_private_category: 'Example category',
+			}),
+		});
+		assert.equal(
+			injected.status,
+			200,
+			'A no-key form must accept its ordinary fields',
+		);
+		const noKeyStored = (
+			await d1json(
+				local,
+				'SELECT answers FROM form_submissions ORDER BY id DESC LIMIT 1',
+			)
+		)[0].answers;
+		assert.ok(
+			noKeyStored.includes('No-key Respondent'),
+			'Ordinary no-key response must be saved',
+		);
+		for (const marker of [
+			'injected-sensitive-value',
+			'1985-05-08',
+			'Example category',
+			'private_reference',
+			'private_date',
+			'private_category',
+		]) {
+			assert.ok(
+				!noKeyStored.includes(marker),
+				'Injected sensitive fields must not reach storage without an encryption key',
+			);
+		}
+		console.log(
+			'PASS injected sensitive fields are ignored during no-key POST submission',
 		);
 	}
 	await homePage();

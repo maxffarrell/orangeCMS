@@ -58,15 +58,40 @@ site.routes = [
  { path: '/responses/:slug', kind: 'form' }
 ];
 site.privacyPath = '/policy';
+site.canonicalHost = 'canonical.example.test';
+site.aliasHosts = ['alias.example.test'];
+site.settingsFields.push({key:'public_notice',label:'Public notice',type:'text'});
+site.publicSettings.push('public_notice');
 `,
 	);
 	await run([join(source, 'node_modules/vite/bin/vite.js'), 'build']);
 	await run(['scripts/smoke-cms.mjs'], {
+		CMS_SMOKE_CANONICAL_HOST: 'canonical.example.test',
+		CMS_SMOKE_ALIAS_HOSTS: 'alias.example.test',
 		CMS_SMOKE_ABSENT_PATHS:
 			'/content,/content/smoke-entry,/forms,/forms/smoke-form,/privacy',
 	});
 	console.log(
 		'PASS custom route map compiles, serves new mounts, and removes former mounts',
+	);
+	// Sites can omit public forms entirely; their content administration must
+	// still receive the same CRUD and authentication checks.
+	await writeFile(
+		configPath,
+		(await readFile(configPath, 'utf8')) +
+			`
+site.routes = site.routes.filter(route => route.kind !== 'form' && route.kind !== 'forms');
+`,
+	);
+	await run([join(source, 'node_modules/vite/bin/vite.js'), 'build']);
+	await run(['scripts/smoke-cms.mjs'], {
+		CMS_SMOKE_CANONICAL_HOST: 'canonical.example.test',
+		CMS_SMOKE_ALIAS_HOSTS: 'alias.example.test',
+		CMS_SMOKE_ABSENT_PATHS:
+			'/responses,/responses/smoke-form,/forms,/forms/smoke-form',
+	});
+	console.log(
+		'PASS a site with no public forms still runs core administration smoke checks',
 	);
 } finally {
 	await rm(fixture, { recursive: true, force: true });

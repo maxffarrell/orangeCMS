@@ -17,10 +17,7 @@ pnpm dev
 Configure your site in `src/lib/site.ts`. Create content in `/admin`. Local development bypasses Access authentication; keep the development server local.
 
 ```sh
-pnpm test:unit
-pnpm check
-pnpm build
-pnpm test:routes
+pnpm test # unit checks, typecheck, production smoke, and consumer route fixtures
 ```
 
 The production build runs a compiled-Worker smoke test against isolated local D1/R2 bindings, including rendered content, schema-driven editing, form privacy, token scopes, and persistence. It never reads a deployed database.
@@ -38,3 +35,11 @@ Consumers can pin this repository as a Git submodule and compose `src/` with pri
 ## License
 
 [MIT](LICENSE). Bundled third-party components and dependencies retain their respective licenses.
+
+## Test coverage
+
+`pnpm test:unit` exercises real form validation, conditional fields, encryption/redaction, route resolution, and migrated SQLite persistence through a D1-compatible adapter. Token tests check hashing, permissions, revocation, and usage tracking.
+
+`pnpm build` includes the production Worker smoke suite: rendered D1 content, authenticated admin CRUD, scoped MCP edits and audit logs, privacy-preserving form storage/email/export, settings persistence, Access JWT verification, and valid/invalid R2 uploads. All fixtures are synthetic and isolated from deployed resources.
+
+`pnpm test:routes` builds separate consumer fixtures with remapped public paths and with no public form routes. It verifies former paths return 404, saved public settings reach rendered content, and core admin checks still run when forms are unmounted. GitHub Actions runs all of these checks.

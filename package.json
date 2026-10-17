@@ -24,8 +24,9 @@
 		"deploy": "pnpm build && wrangler deploy",
 		"check:public": "node scripts/audit-public.mjs",
 		"test:audit": "node --test scripts/audit-public.test.mjs",
-		"test:unit": "node --test scripts/routing.test.mjs scripts/content-model.test.mjs scripts/render.test.mjs scripts/audit-public.test.mjs",
-		"test:routes": "node scripts/verify-custom-routes.mjs"
+		"test:unit": "node --test scripts/*.test.mjs",
+		"test:routes": "node scripts/verify-custom-routes.mjs",
+		"test": "pnpm test:unit && pnpm check && pnpm build && pnpm test:routes"
 	},
 	"dependencies": {
 		"@floating-ui/dom": "^1.8.0",

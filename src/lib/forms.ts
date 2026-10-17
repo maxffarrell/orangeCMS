@@ -13,7 +13,7 @@ export const FIELD_TYPES = [
 	'radio',
 	'checkbox',
 	'checkboxes',
-	'heading'
+	'heading',
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
@@ -28,10 +28,14 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
 	radio: 'Single choice (radio)',
 	checkbox: 'Single checkbox',
 	checkboxes: 'Multiple choice (checkboxes)',
-	heading: 'Section heading'
+	heading: 'Section heading',
 };
 
-export const CHOICE_TYPES: readonly FieldType[] = ['select', 'radio', 'checkboxes'];
+export const CHOICE_TYPES: readonly FieldType[] = [
+	'select',
+	'radio',
+	'checkboxes',
+];
 
 export interface FormField {
 	key: string;
@@ -69,15 +73,27 @@ export const FORM_LIMITS = {
 	maxHelp: 400,
 	maxOption: 100,
 	maxText: 500,
-	maxTextarea: 5000
+	maxTextarea: 5000,
 } as const;
 
 const KEY_RE = /^[a-z][a-z0-9_]{0,39}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+function isCalendarDate(value: string): boolean {
+	if (!DATE_RE.test(value)) return false;
+	const timestamp = Date.parse(value);
+	return (
+		Number.isFinite(timestamp) &&
+		new Date(timestamp).toISOString().slice(0, 10) === value
+	);
+}
+
 export function isFieldType(value: unknown): value is FieldType {
-	return typeof value === 'string' && (FIELD_TYPES as readonly string[]).includes(value);
+	return (
+		typeof value === 'string' &&
+		(FIELD_TYPES as readonly string[]).includes(value)
+	);
 }
 
 export function slugifyKey(label: string): string {
@@ -86,7 +102,9 @@ export function slugifyKey(label: string): string {
 		.replace(/[^a-z0-9]+/g, '_')
 		.replace(/^_+|_+$/g, '')
 		.slice(0, 40);
-	return /^[a-z]/.test(base) ? base : `field_${base}`.replace(/_$/, '').slice(0, 40);
+	return /^[a-z]/.test(base)
+		? base
+		: `field_${base}`.replace(/_$/, '').slice(0, 40);
 }
 
 export function slugifyFormSlug(title: string): string {
@@ -99,20 +117,30 @@ export function slugifyFormSlug(title: string): string {
 	);
 }
 
-const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const str = (v: unknown, max: number) =>
+	typeof v === 'string' ? v.trim().slice(0, max) : '';
 
 /** Validate and normalise untrusted field definitions (admin input, MCP input, stored JSON). */
-export function sanitizeFields(input: unknown): { fields: FormField[]; error?: string } {
-	if (!Array.isArray(input)) return { fields: [], error: 'Fields must be a list' };
+export function sanitizeFields(input: unknown): {
+	fields: FormField[];
+	error?: string;
+} {
+	if (!Array.isArray(input))
+		return { fields: [], error: 'Fields must be a list' };
 	if (input.length > FORM_LIMITS.maxFields) {
-		return { fields: [], error: `A form can have at most ${FORM_LIMITS.maxFields} fields` };
+		return {
+			fields: [],
+			error: `A form can have at most ${FORM_LIMITS.maxFields} fields`,
+		};
 	}
 	const fields: FormField[] = [];
 	const seen = new Set<string>();
 	for (const [i, raw] of input.entries()) {
-		if (!raw || typeof raw !== 'object') return { fields: [], error: `Field ${i + 1} is invalid` };
+		if (!raw || typeof raw !== 'object')
+			return { fields: [], error: `Field ${i + 1} is invalid` };
 		const r = raw as Record<string, unknown>;
-		if (!isFieldType(r.type)) return { fields: [], error: `Field ${i + 1} has an unknown type` };
+		if (!isFieldType(r.type))
+			return { fields: [], error: `Field ${i + 1} has an unknown type` };
 		const label = str(r.label, FORM_LIMITS.maxLabel);
 		if (!label) return { fields: [], error: `Field ${i + 1} needs a label` };
 		let key = str(r.key, 40) || slugifyKey(label);
@@ -126,20 +154,26 @@ export function sanitizeFields(input: unknown): { fields: FormField[]; error?: s
 		if (r.type !== 'heading') {
 			if (r.required === true) field.required = true;
 			const placeholder = str(r.placeholder, FORM_LIMITS.maxLabel);
-			if (placeholder && !['select', 'radio', 'checkbox', 'checkboxes', 'date'].includes(r.type)) {
+			if (
+				placeholder &&
+				!['select', 'radio', 'checkbox', 'checkboxes', 'date'].includes(r.type)
+			) {
 				field.placeholder = placeholder;
 			}
 		}
 		const help = str(r.help, FORM_LIMITS.maxHelp);
 		if (help) field.help = help;
 		if (r.sensitive === true && r.type !== 'heading') field.sensitive = true;
-		if (r.type === 'date' && (r.range === 'past' || r.range === 'future')) field.range = r.range;
+		if (r.type === 'date' && (r.range === 'past' || r.range === 'future'))
+			field.range = r.range;
 		if (r.width === 'half' && r.type !== 'heading') field.width = 'half';
 
 		if (CHOICE_TYPES.includes(r.type)) {
 			const rawOptions = Array.isArray(r.options) ? r.options : [];
 			const options = [
-				...new Set(rawOptions.map((o) => str(o, FORM_LIMITS.maxOption)).filter(Boolean))
+				...new Set(
+					rawOptions.map((o) => str(o, FORM_LIMITS.maxOption)).filter(Boolean),
+				),
 			].slice(0, FORM_LIMITS.maxOptions);
 			if (options.length === 0) {
 				return { fields: [], error: `"${label}" needs at least one option` };
@@ -161,7 +195,9 @@ export function sanitizeFields(input: unknown): { fields: FormField[]; error?: s
 	return { fields };
 }
 
-export function parseStoredFields(json: string | null | undefined): FormField[] {
+export function parseStoredFields(
+	json: string | null | undefined,
+): FormField[] {
 	if (!json) return [];
 	try {
 		return sanitizeFields(JSON.parse(json)).fields;
@@ -171,12 +207,18 @@ export function parseStoredFields(json: string | null | undefined): FormField[] 
 }
 
 /** Current value of a field as a comparable string (checkboxes: matches if any selected). */
-export function fieldMatches(value: AnswerValue | undefined | null, equals: string): boolean {
+export function fieldMatches(
+	value: AnswerValue | undefined | null,
+	equals: string,
+): boolean {
 	if (Array.isArray(value)) return value.includes(equals);
 	return value === equals;
 }
 
-export function isVisible(field: FormField, values: Record<string, AnswerValue | undefined>): boolean {
+export function isVisible(
+	field: FormField,
+	values: Record<string, AnswerValue | undefined>,
+): boolean {
 	if (!field.showIf) return true;
 	return fieldMatches(values[field.showIf.field], field.showIf.equals);
 }
@@ -188,7 +230,10 @@ export interface ValidationResult {
 }
 
 /** Validate a submission against a schema. Hidden (showIf) fields are ignored. */
-export function validateSubmission(fields: FormField[], data: FormData): ValidationResult {
+export function validateSubmission(
+	fields: FormField[],
+	data: FormData,
+): ValidationResult {
 	const errors: Record<string, string> = {};
 	const values: Record<string, AnswerValue> = {};
 	const answers: Answer[] = [];
@@ -200,22 +245,29 @@ export function validateSubmission(fields: FormField[], data: FormData): Validat
 		let value: AnswerValue;
 
 		if (field.type === 'checkboxes') {
-			value = data.getAll(name).filter((v): v is string => typeof v === 'string');
+			value = data
+				.getAll(name)
+				.filter((v): v is string => typeof v === 'string');
 			values[field.key] = value;
 			const bad = value.some((v) => !field.options?.includes(v));
 			if (bad) errors[field.key] = 'Please choose from the listed options';
-			else if (field.required && value.length === 0) errors[field.key] = 'Please choose at least one';
+			else if (field.required && value.length === 0)
+				errors[field.key] = 'Please choose at least one';
 			if (value.length === 0 && !field.required) continue;
 		} else if (field.type === 'checkbox') {
 			const checked = data.get(name) !== null;
 			value = checked ? 'Yes' : 'No';
 			values[field.key] = value;
-			if (field.required && !checked) errors[field.key] = 'This box must be checked';
+			if (field.required && !checked)
+				errors[field.key] = 'This box must be checked';
 		} else {
 			const raw = data.get(name);
 			value = typeof raw === 'string' ? raw.trim() : '';
 			values[field.key] = value;
-			const max = field.type === 'textarea' ? FORM_LIMITS.maxTextarea : FORM_LIMITS.maxText;
+			const max =
+				field.type === 'textarea'
+					? FORM_LIMITS.maxTextarea
+					: FORM_LIMITS.maxText;
 			if (value === '') {
 				if (field.required) errors[field.key] = 'This field is required';
 				else continue;
@@ -225,16 +277,26 @@ export function validateSubmission(fields: FormField[], data: FormData): Validat
 				errors[field.key] = 'Enter a valid email address';
 			} else if (field.type === 'number' && !Number.isFinite(Number(value))) {
 				errors[field.key] = 'Enter a number';
-			} else if (field.type === 'date' && (!DATE_RE.test(value) || Number.isNaN(Date.parse(value)))) {
+			} else if (field.type === 'date' && !isCalendarDate(value)) {
 				errors[field.key] = 'Enter a valid date';
-			} else if ((field.type === 'select' || field.type === 'radio') && !field.options?.includes(value)) {
+			} else if (field.type === 'date' && field.range) {
+				// Date-only values use UTC on the server. Both picker ranges include today.
+				const today = new Date().toISOString().slice(0, 10);
+				if (field.range === 'past' && value > today)
+					errors[field.key] = 'Choose today or an earlier date';
+				if (field.range === 'future' && value < today)
+					errors[field.key] = 'Choose today or a later date';
+			} else if (
+				(field.type === 'select' || field.type === 'radio') &&
+				!field.options?.includes(value)
+			) {
 				errors[field.key] = 'Please choose from the listed options';
 			}
 		}
 		answers.push(
 			field.sensitive
 				? { key: field.key, label: field.label, value, sensitive: true }
-				: { key: field.key, label: field.label, value }
+				: { key: field.key, label: field.label, value },
 		);
 	}
 	return { answers, errors, values };
@@ -245,7 +307,10 @@ export function formatAnswer(value: AnswerValue): string {
 }
 
 /** Fields a visitor may be asked for. Sensitive fields are withheld unless they can be encrypted. */
-export function collectableFields(fields: FormField[], canEncrypt: boolean): FormField[] {
+export function collectableFields(
+	fields: FormField[],
+	canEncrypt: boolean,
+): FormField[] {
 	return canEncrypt ? fields : fields.filter((f) => !f.sensitive);
 }
 
