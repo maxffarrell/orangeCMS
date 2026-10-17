@@ -27,7 +27,7 @@ Read the current object and the live tool input schema before writing. Available
 
 `confirm: true` applies the submitted arguments; it is not an immutable preview ID. Re-read and preview again if the object or requested arguments change before applying. Edits are validated, rate-limited, and audited; report errors and do not treat a preview as a saved change.
 
-Uploads use optional `FILES_KV` storage, configured separately from `OAUTH_KV`. If file requests are unavailable, report that the installation needs verified Free-plan storage or has exhausted a quota. Do not enable R2, a paid plan, or another fallback to complete a content edit.
+Uploads use optional `FILES_KV` storage, configured separately from `OAUTH_KV`. Published media is copied into static assets; unpublished file previews still depend on KV. If a file is unavailable, check whether it is in the published inventory and whether dynamic storage is configured or quota-limited. Do not enable R2, a paid plan, or another fallback to complete a content edit.
 
 Important data semantics:
 
@@ -37,5 +37,7 @@ Important data semantics:
 - Content slugs identify stored objects; public URL mapping and navigation live in the site's source configuration. Creating a page or collection does not automatically add a public route. Report when source configuration changes are needed.
 - Settings tools accept configured keys only. Public exposure is controlled separately by `site.publicSettings`; saving a value does not make an otherwise private key public.
 - Form schema changes can alter validation and how responses are collected. Preserve existing field IDs and conditions when making a narrow change. Never copy personal submissions into page content, fixtures, or sample configuration.
+
+For sites using static snapshots, a saved active record is eligible CMS content; it does not update the deployed snapshot. Explicit publication uses the project’s local `pnpm publish:static` workflow and a separate authorized deployment. Report a content save as saved, and claim live publication only after verifying the new deployed artifact. Failed exports retain the previous snapshot.
 
 Summarize the actual saved objects, draft/published state where applicable, and any route or permission gap. For source changes, use the project's tests and production smoke suite before proposing publication; routine remote content edits can be verified by tool readback and the affected public URL.

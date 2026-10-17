@@ -50,6 +50,12 @@ For an existing R2 consumer, preserve object keys and content types while migrat
 
 Keep credentials in local ignored environment files, client secrets, or provider secret storage. Use the project's current documentation for exact commands and selected resources.
 
+## Publish a static public snapshot
+
+Use the project’s local `pnpm publish:static` workflow and current setup documentation for source and route configuration. A consumer needs its wrapper to include custom public routes. Saving a draft or active record does not replace an already deployed snapshot. Export anonymously; never add admin credentials to capture privileged pages or data. Include public Svelte hydration assets, data snapshots, and referenced local `/files/…` media, not just HTML. Published pages use full document navigation to avoid mixing published client versions with current dynamic form/admin routes, while hydration retains menus and animations. Unpublished file previews still depend on KV. Leave admin, MCP/OAuth, uploads, and form submissions dynamic.
+
+A failed export must preserve the last successful artifact. Review and outage-test the result before any separately authorized deployment. Stop or block the source and serve the artifact without D1/KV; verify direct paths, internal navigation, menus, animation visibility, images, and PDFs. Install into fresh build assets. Set `STATIC_PUBLISHING=1` for the static deployment and keep public static paths asset-first; the guard blocks live-CMS fallback for missing public snapshots. Keep the local rendering source outside that guard while preparing a replacement. Local export does not verify account billing or stop existing R2 charges. There is no automatic admin deploy button.
+
 ## Verify the outcome
 
 Run `pnpm test` for unit tests, typecheck, compiled-Worker smoke, and configurable-route fixtures. `pnpm build` includes the isolated local D1/KV production smoke suite. A consumer may define additional composition and smoke commands; run those too when changing that consumer. Test the actual customized paths and rendered content, including former paths returning 404 where routes were moved.

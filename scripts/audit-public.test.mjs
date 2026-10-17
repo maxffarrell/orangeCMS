@@ -37,3 +37,9 @@ test('configured site content is matched without exposing the matching value', (
 test('generic favicon is permitted and an empty index fails closed', () => fixture(({ add, audit }) => {
  assert.equal(audit().status, 1); add('static/favicon.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>'); assert.equal(audit().status, 0);
 }));
+
+test('published customer snapshots are rejected even when force-staged', () => fixture(({ add, audit }) => {
+ add('site/published/assets/index.html', '<h1>Customer content</h1>');
+ add('other-output/manifest.json', JSON.stringify({format:'orangecms-static-v1',files:[]}));
+ const result=audit(); assert.equal(result.status,1); assert.match(result.stderr,/local runtime/); assert.match(result.stderr,/snapshot must remain private/);
+}));

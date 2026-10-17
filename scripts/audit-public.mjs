@@ -21,6 +21,7 @@ function inspect(path, bytes, source) {
  let content;
  try { content = decoder.decode(bytes); }
  catch { failures.add(`${path}: binary or invalid UTF-8 content (${source})`); return; }
+ if (/manifest\.json$/i.test(path)) { try { if (JSON.parse(content).format === 'orangecms-static-v1') failures.add(`${path}: generated site snapshot must remain private (${source})`); } catch {} }
  if (content.includes('\0')) failures.add(`${path}: binary content (${source})`);
  for (const [label, pattern] of secrets) if (pattern.test(content)) failures.add(`${path}: possible ${label} (${source})`);
  for (const value of forbidden) if (content.toLowerCase().includes(value.toLowerCase()) || path.toLowerCase().includes(value.toLowerCase())) failures.add(`${path}: forbidden site content (${source})`);
@@ -32,7 +33,7 @@ for (const entry of entries) {
  const [mode, object, stage] = metadata.split(' ');
  if (stage !== '0') { failures.add(`${path}: unresolved index entry`); continue; }
  if (mode !== '100644' && mode !== '100755') { failures.add(`${path}: symlinks and nested repositories require separate publication review`); continue; }
- if (/(^|\/)(?:node_modules|\.git|\.svelte-kit|\.wrangler|\.cache|\.aws|\.ssh|coverage|dist|build)(\/|$)/i.test(path) || /(?:^|\/)(?:\.env(?:\..*)?|\.dev\.vars(?:\..*)?|credentials(?:\..*)?|id_(?:rsa|ed25519)|\.DS_Store)$/i.test(path) || /\.(?:pem|key|p12|pfx|jks|sqlite(?:3)?|db|log)$/i.test(path)) failures.add(`${path}: local runtime, environment, credential, or data file`);
+ if (/(^|\/)(?:node_modules|\.git|\.svelte-kit|\.wrangler|\.cache|\.aws|\.ssh|coverage|dist|build|published(?:\.(?:staging|previous)-[^/]+)?)(\/|$)/i.test(path) || /(?:^|\/)(?:\.env(?:\..*)?|\.dev\.vars(?:\..*)?|credentials(?:\..*)?|id_(?:rsa|ed25519)|\.DS_Store)$/i.test(path) || /\.(?:pem|key|p12|pfx|jks|sqlite(?:3)?|db|log)$/i.test(path)) failures.add(`${path}: local runtime, environment, credential, or data file`);
  if (path !== 'static/favicon.svg' && /\.(?:png|jpe?g|gif|webp|avif|ico|svg|pdf|mp[34]|mov|wav|zip|gz|woff2?|ttf|otf)$/i.test(path)) failures.add(`${path}: site asset must be supplied by the consumer`);
  inspect(path, git('cat-file', 'blob', object), 'index');
  try {

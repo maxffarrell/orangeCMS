@@ -12,6 +12,8 @@ declare global {
 	namespace Cloudflare {
 		interface Env {
 			DB: D1Database;
+			/** Opt in after installing approved public static assets. */
+			STATIC_PUBLISHING?: string;
 			/** Per-installation OAuth state; absence disables OAuth and preserves API tokens. */
 			OAUTH_KV?: KVNamespace;
 			/** Optional canonical HTTPS origin for OAuth discovery and token audiences. */

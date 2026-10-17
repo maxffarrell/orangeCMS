@@ -29,7 +29,8 @@
 		"test": "pnpm test:unit && pnpm check && pnpm build && pnpm test:routes",
 		"db:seed:local": "wrangler d1 execute DB --local --file=seeds/starter.sql",
 		"db:seed:remote": "wrangler d1 execute DB --remote --file=seeds/starter.sql",
-		"plugin:package": "node scripts/package-plugin.mjs"
+		"plugin:package": "node scripts/package-plugin.mjs",
+		"publish:static": "node scripts/publish-static.mjs"
 	},
 	"dependencies": {
 		"@cloudflare/workers-oauth-provider": "1.2.3",

@@ -35,6 +35,12 @@ Collections define their own fields. Entries share a small set of publishing att
 
 For example, a site can mount a collection at `/journal` and its entries at `/journal/:slug`, or mount the same collection under a different path without editing the CMS router. Navigation is a separate configuration list, so changing labels or links does not change data identity. See [SETUP.md](SETUP.md) for the configuration contract and reserved infrastructure paths.
 
+## Static publishing
+
+Save content in the CMS, then explicitly run `pnpm publish:static` to prepare a static public snapshot for deployment. Saving and publishing are separate actions: active content in the CMS does not update an already deployed snapshot. See [publishing configuration](SETUP.md#static-publishing) for the required source, route inventory, and deployment steps.
+
+The snapshot includes rendered public pages, their Svelte hydration/data assets, and local media. Public browsing can then use static assets without reading D1 or KV. Admin, OAuth/MCP, uploads, and form submissions remain live backend functions. A failed export retains the previous successful snapshot; it does not publish a partial replacement. There is no automatic authenticated deployment button in the admin UI.
+
 ## Shared core
 
 Consumers can pin this repository as a Git submodule and compose `src/` with private configuration, templates, styles, and assets. Keep deployment resources and site content in the consumer. Check out submodules recursively in CI and compose sources before framework commands. Pin and review core updates before deployment.

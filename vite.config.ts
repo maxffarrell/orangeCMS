@@ -44,12 +44,13 @@ const WorkerEntrypoint = oauthWorkersRuntime.WorkerEntrypoint ?? class {
 // before SvelteKit, whose cookie-based CSRF check intentionally rejects native
 // OAuth form posts. Other requests retain the unchanged framework protections.
 function oauthCloudflareAdapter() {
-	const base = adapter();
+	const configPath = process.env.ORANGECMS_WRANGLER_CONFIG;
+	const base = adapter(configPath ? { config: configPath } : {});
 	return {
 		...base,
 		async adapt(builder: Parameters<typeof base.adapt>[0]) {
 			await base.adapt(builder);
-			const config = unstable_readConfig({});
+			const config = unstable_readConfig(configPath ? { config: configPath } : {});
 			const entry = config.main;
 			if (!entry)
 				throw new Error('OAuth requires a Cloudflare Worker main entry');
@@ -68,9 +69,11 @@ function oauthCloudflareAdapter() {
 			if (!modulePath.startsWith('.')) modulePath = './' + modulePath;
 			source =
 				`import { handleOAuthProtocolRequest } from ${JSON.stringify(modulePath)};\n` +
+                `import { getStaticPublishingResponse } from ${JSON.stringify(modulePath.replace(/oauth\.ts$/, 'static-publishing.ts'))};\n` +
+                `import { site as staticPublishingSite } from ${JSON.stringify(modulePath.replace(/server\/oauth\.ts$/, 'site.ts'))};\n` +
 				source.replace(
 					marker,
-					`${marker}\n const protocol = await handleOAuthProtocolRequest({ request: req, url: new URL(req.url) }, env);\n if (protocol) return protocol;`,
+					`${marker}\n const protocol = await handleOAuthProtocolRequest({ request: req, url: new URL(req.url) }, env);\n if (protocol) return protocol;\n const staticMiss = getStaticPublishingResponse(req, env.STATIC_PUBLISHING, staticPublishingSite.routes);\n if (staticMiss) return staticMiss;`,
 				);
 			await writeFile(entry, source);
 		},

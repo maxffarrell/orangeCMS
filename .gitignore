@@ -8,3 +8,8 @@ node_modules/
 .DS_Store
 *.log
 dist/
+
+# Published site snapshots contain consumer-owned content and media.
+published/
+published.staging-*/
+published.previous-*/
