@@ -20,7 +20,7 @@ async function fixture(run) {
   const requests=[];
   const fetchImpl=async (url,options) => {
    requests.push({url:String(url),options});
-   return url.pathname.endsWith('/__data.json') ? Response.json({type:'data',nodes:[{type:'data',data:{content:'Published content',file:'/files/document.pdf'}}]}) : new Response('<html><head><script src="/_app/immutable/client.js"></script></head><body data-sveltekit-preload-data="hover"><h1>Published content</h1><a href="/files/document.pdf">Download</a></body></html>',{headers:{'content-type':'text/html'}});
+   return url.pathname.endsWith('/__data.json') ? Response.json({type:'data',nodes:[{type:'data',data:{content:'Published content',file:'/files/document.pdf'}}]}, {headers:{'cache-control':'private, no-store'}}) : new Response('<html><head><script src="/_app/immutable/client.js"></script></head><body data-sveltekit-preload-data="hover"><h1>Published content</h1><a href="/files/document.pdf">Download</a></body></html>',{headers:{'content-type':'text/html'}});
   };
   await run({root,assets,files,output,inventory,fetchImpl,requests,bytes});
  } finally { await rm(root,{recursive:true,force:true}); }
@@ -55,6 +55,13 @@ test('failed export retains the last approved snapshot and corrupted snapshots c
  const target=join(f.root,'deploy');await mkdir(target);await writeFile(join(target,'index.html'),'old');
  await assert.rejects(()=>installStaticSnapshot({snapshotDirectory:f.output,assetsDirectory:target}));
  assert.equal(await readFile(join(target,'index.html'),'utf8'),'old');
+}));
+test('framework navigation responses containing load errors cannot replace a publication',()=>fixture(async f=>{
+ const options={origin:'http://localhost:8787',inventory:f.inventory,assetsDirectory:f.assets,filesDirectory:f.files,outputDirectory:f.output,fetchImpl:f.fetchImpl};
+ await publishStaticSnapshot(options);
+ const approved=await readFile(join(f.output,'manifest.json'),'utf8');
+ await assert.rejects(()=>publishStaticSnapshot({...options,fetchImpl:async(url,init)=>url.pathname.endsWith('/__data.json') ? Response.json({type:'data',nodes:[{type:'error',status:500,error:{message:'Backend failure'}}]}, {headers:{'cache-control':'private, no-store'}}) : f.fetchImpl(url,init)}),/Invalid SvelteKit navigation/);
+ assert.equal(await readFile(join(f.output,'manifest.json'),'utf8'),approved);
 }));
 test('export rejects source overlap, symlink media, private responses and development HTML',()=>fixture(async f=>{
  const options={origin:'http://localhost:8787',inventory:f.inventory,assetsDirectory:f.assets,filesDirectory:f.files,outputDirectory:f.output,fetchImpl:f.fetchImpl};

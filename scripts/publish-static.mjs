@@ -103,7 +103,13 @@ export async function validateStaticSnapshot(snapshotDirectory) {
 }
 async function capture(fetchImpl, origin, path, expectedType) {
  const response = await fetchImpl(new URL(path,origin), {redirect:'manual',headers:{Accept:expectedType}});
- if (response.status !== 200 || !response.headers.get('content-type')?.includes(expectedType) || response.headers.has('set-cookie') || /(?:private|no-store)/i.test(response.headers.get('cache-control') ?? '')) throw new Error('Public snapshot response failed validation');
+ const cacheControl = response.headers.get('cache-control') ?? '';
+ // SvelteKit marks even anonymous public navigation data private/no-store.
+ // This offline exporter sends no credentials and only requests selected public
+ // routes. HTML remains strict; data is additionally validated as a SvelteKit
+ // data response below before any artifact can replace the approved snapshot.
+ const frameworkNavigation = expectedType === 'application/json' && /^private,\s*no-store$/i.test(cacheControl);
+ if (response.status !== 200 || !response.headers.get('content-type')?.includes(expectedType) || response.headers.has('set-cookie') || (!frameworkNavigation && /(?:private|no-store)/i.test(cacheControl))) throw new Error('Public snapshot response failed validation');
  const bytes = Buffer.from(await response.arrayBuffer());
  if (bytes.length > MAX_ASSET_BYTES) throw new Error('Rendered snapshot exceeds the static asset limit');
  return bytes;
@@ -160,7 +166,7 @@ export async function publishStaticSnapshot({origin,inventory,assetsDirectory,fi
    const dataPath = path === '/' ? '__data.json' : path.slice(1) + '/__data.json';
    const data = await capture(fetchImpl,origin,(path === '/' ? '' : path) + '/__data.json?x-sveltekit-invalidated=' + '1'.repeat(64),'application/json');
    const parsed = JSON.parse(data.toString('utf8'));
-   if (parsed.type !== 'data' || !Array.isArray(parsed.nodes)) throw new Error('Invalid SvelteKit navigation snapshot');
+   if (parsed.type !== 'data' || !Array.isArray(parsed.nodes) || parsed.nodes.some(node => node && !['data', 'skip'].includes(node.type))) throw new Error('Invalid SvelteKit navigation snapshot');
    await put(htmlPath,html);
    await put(dataPath,data);
    manifest.routes.push({path,html:htmlPath,data:dataPath});

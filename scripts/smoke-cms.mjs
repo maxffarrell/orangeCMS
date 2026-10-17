@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { resolve, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { publishStaticSnapshot } from './publish-static.mjs';
 
 // Exercise the production worker, never the Vite dev server or a remote database.
 const dir = await mkdtemp(join(tmpdir(), 'orangecms-smoke-'));
@@ -247,6 +248,15 @@ try {
 	await startWorker(local);
 	if (homePath)
 		await page(homePath, ['Smoke CMS Home', 'Smoke CMS page content from D1']);
+	if (homePath) {
+		await publishStaticSnapshot({
+			origin,
+			inventory: { paths: [homePath], files: [], requiredMarkers: { [homePath]: ['Smoke CMS Home'] } },
+			assetsDirectory: resolve(config.assets.directory),
+			outputDirectory: join(dir, 'published-smoke'),
+		});
+		console.log('PASS compiled public HTML and SvelteKit navigation data export as a verified static snapshot');
+	}
 	for (const absentPath of (process.env.CMS_SMOKE_ABSENT_PATHS ?? '')
 		.split(',')
 		.filter(Boolean)) {
