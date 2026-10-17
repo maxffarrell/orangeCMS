@@ -1,0 +1,14 @@
+{
+  "name": "orangecms",
+  "metadata": {
+    "description": "Agent skills for setting up and managing orangeCMS."
+  },
+  "owner": { "name": "orangeCMS contributors" },
+  "plugins": [
+    {
+      "name": "orangecms",
+      "source": "./",
+      "description": "Set up and use orangeCMS, a configurable general purpose CMS."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "orangecms",
+  "version": "1.0.0",
+  "description": "Set up and use orangeCMS, a configurable general purpose content management system.",
+  "author": { "name": "orangeCMS contributors" },
+  "homepage": "https://github.com/maxffarrell/orangeCMS#readme",
+  "repository": "https://github.com/maxffarrell/orangeCMS",
+  "license": "MIT",
+  "keywords": ["cms", "sveltekit", "cloudflare", "content"]
+}

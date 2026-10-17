@@ -1,0 +1,4 @@
+interface:
+  display_name: "orangeCMS Setup"
+  short_description: "Set up and customize a general-purpose orangeCMS site"
+  default_prompt: "Use $orangecms-setup to set up orangeCMS and verify my site's configuration locally."

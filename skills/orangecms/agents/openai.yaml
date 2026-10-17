@@ -1,0 +1,4 @@
+interface:
+  display_name: "orangeCMS"
+  short_description: "Read and edit orangeCMS content with previewed changes"
+  default_prompt: "Use $orangecms to inspect my site's content and preview the updates I request."

@@ -4,6 +4,10 @@ An MIT-licensed, general-purpose CMS built with SvelteKit 3, Svelte 5, TypeScrip
 
 Create collections with custom fields, publish entries and pages, build forms, manage uploads, and connect tools through MCP. The core has no required business model or fixed public content URLs.
 
+## Agent installation
+
+Install the orangeCMS skills through Claude or ChatGPT/Codex, then run the setup workflow in your own project. Claude Code can install it with `/plugin install orangecms --marketplace maxffarrell/orangeCMS`. See [plugin installation](docs/PLUGINS.md) for marketplace commands, the downloadable package, and optional per-site MCP connections.
+
 ## Local development
 
 Use the Node version in `.node-version` and pnpm version in `package.json`.
@@ -11,10 +15,11 @@ Use the Node version in `.node-version` and pnpm version in `package.json`.
 ```sh
 pnpm install --frozen-lockfile
 pnpm db:migrate:local
+pnpm db:seed:local # optional neutral home/privacy placeholders
 pnpm dev
 ```
 
-Configure your site in `src/lib/site.ts`. Create content in `/admin`. Local development bypasses Access authentication; keep the development server local.
+The migration creates empty tables; optional starter content lives in `seeds/starter.sql`. Create your own pages in `/admin` if you skip seeding. Configure your site in `src/lib/site.ts`. Create content in `/admin`. Local development bypasses Access authentication; keep the development server local.
 
 ```sh
 pnpm test # unit checks, typecheck, production smoke, and consumer route fixtures

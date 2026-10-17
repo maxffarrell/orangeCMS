@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "orangecms",
+  "version": "1.0.0",
+  "description": "Set up and use orangeCMS, a configurable general purpose content management system.",
+  "author": { "name": "orangeCMS contributors" },
+  "homepage": "https://github.com/maxffarrell/orangeCMS#readme",
+  "repository": "https://github.com/maxffarrell/orangeCMS",
+  "license": "MIT",
+  "keywords": ["cms", "sveltekit", "cloudflare", "content"],
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/orangecms-setup/SKILL.md",
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "orangeCMS",
+        "shortDescription": "Set up and manage your CMS"
+      }
+    }
+  }
+}

@@ -26,7 +26,10 @@
 		"test:audit": "node --test scripts/audit-public.test.mjs",
 		"test:unit": "node --test scripts/*.test.mjs",
 		"test:routes": "node scripts/verify-custom-routes.mjs",
-		"test": "pnpm test:unit && pnpm check && pnpm build && pnpm test:routes"
+		"test": "pnpm test:unit && pnpm check && pnpm build && pnpm test:routes",
+		"db:seed:local": "wrangler d1 execute DB --local --file=seeds/starter.sql",
+		"db:seed:remote": "wrangler d1 execute DB --remote --file=seeds/starter.sql",
+		"plugin:package": "node scripts/package-plugin.mjs"
 	},
 	"dependencies": {
 		"@floating-ui/dom": "^1.8.0",

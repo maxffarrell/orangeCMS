@@ -203,8 +203,8 @@ try {
 	const configPath = join(dir, 'wrangler.json');
 	await writeFile(configPath, JSON.stringify(config));
 	const local = ['--config', configPath, '--persist-to', join(dir, 'state')];
-	// One D1 invocation applies the real migrations and fixture together, avoiding
-	// four separate Wrangler/workerd startups without reducing coverage.
+	// Apply the real schema and opt-in starter data explicitly before fixtures.
+	// Production migrations themselves never install example content.
 	const migrations = await Promise.all(
 		(await readdir('migrations'))
 			.filter((file) => file.endsWith('.sql'))
@@ -215,6 +215,8 @@ try {
 	await writeFile(
 		fixture,
 		migrations.join('\n') +
+			'\n' +
+			(await readFile('seeds/starter.sql', 'utf8')) +
 			'\n' +
 			`
     DELETE FROM form_submissions; DELETE FROM form_schemas; DELETE FROM forms; DELETE FROM api_tokens; DELETE FROM entries; DELETE FROM collections;
