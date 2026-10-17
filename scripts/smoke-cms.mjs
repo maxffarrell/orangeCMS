@@ -203,6 +203,7 @@ try {
 	};
 	config.kv_namespaces = [
 		{ binding: 'OAUTH_KV', id: '00000000000000000000000000000000' },
+		{ binding: 'FILES_KV', id: '00000000000000000000000000000001' },
 	];
 	config.vars.OAUTH_ISSUER = origin;
 	const configPath = join(dir, 'wrangler.json');
@@ -944,6 +945,17 @@ try {
 	);
 	assert.equal(stored.headers.get('content-type'), 'application/pdf');
 	assert.ok((await stored.text()).includes('smoke fixture'));
+	const etag = stored.headers.get('etag');
+	assert.match(etag, /^"[a-f0-9]{64}"$/);
+	const head = await fetch(origin + uploadedPath, { method: 'HEAD' });
+	assert.equal(head.status, 200);
+	assert.equal(head.headers.get('etag'), etag);
+	assert.equal((await head.arrayBuffer()).byteLength, 0);
+	assert.equal(
+		(await fetch(origin + uploadedPath, { headers: { 'If-None-Match': etag } }))
+			.status,
+		304,
+	);
 	const image = await uploadFile(
 		new File(
 			[
@@ -968,12 +980,43 @@ try {
 	assert.equal(
 		(await fetch(origin + '/files/missing-smoke-object')).status,
 		404,
-		'Missing R2 object must return 404',
+		'Missing file object must return 404',
 	);
 	console.log(
-		'PASS PDF/image uploads persist to local R2 and invalid uploads are rejected',
+		'PASS PDF/image uploads persist to local KV and invalid uploads are rejected',
 	);
 	await stopWorker();
+	const fileBindings = config.kv_namespaces;
+	config.kv_namespaces = fileBindings.filter(
+		(binding) => binding.binding !== 'FILES_KV',
+	);
+	// Simulate a consumer that still has a legacy binding: it must never be used.
+	config.r2_buckets = [
+		{ binding: 'FILES', bucket_name: 'legacy-storage-must-not-be-used' },
+	];
+	await writeFile(configPath, JSON.stringify(config));
+	await startWorker(local);
+	assert.equal(
+		(await fetch(origin + uploadedPath)).status,
+		503,
+		'Missing KV must not fall back to legacy R2',
+	);
+	assert.equal(
+		(
+			await uploadFile(
+				new File(['%PDF-1.7'], 'unavailable.pdf', { type: 'application/pdf' }),
+			)
+		).status,
+		503,
+		'Missing KV must not upload to legacy R2',
+	);
+	await homePage();
+	console.log(
+		'PASS missing file KV fails closed without legacy R2 reads or writes',
+	);
+	await stopWorker();
+	config.kv_namespaces = fileBindings;
+	delete config.r2_buckets;
 	delete config.vars.CF_ACCESS_AUD;
 	delete config.vars.FORM_DATA_KEY;
 	await writeFile(configPath, JSON.stringify(config));

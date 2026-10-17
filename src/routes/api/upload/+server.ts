@@ -1,11 +1,11 @@
 import { env } from 'cloudflare:workers';
 import { error } from '@sveltejs/kit';
+import { putFile, InvalidFileKeyError } from '#lib/server/files.js';
 import { LIMITS } from '#lib/server/limits.js';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
-	const r2 = env.FILES;
-	if (!r2) error(503, 'File storage unavailable');
+	if (!env.FILES_KV) error(503, 'File storage unavailable');
 
 	const formData = await request.formData();
 	const file = formData.get('file') as File | null;
@@ -48,16 +48,22 @@ export const POST: RequestHandler = async ({ request }) => {
 		);
 	}
 
-	const base = file.name
-		.replace(/\.[^.]+$/, '')
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-|-$/g, '');
-	const key = `${prefix}${base}-${Date.now()}.${ext}`;
+	const base =
+		file.name
+			.replace(/\.[^.]+$/, '')
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-|-$/g, '')
+			.slice(0, 100) || 'file';
+	const key = `${prefix}${base}-${crypto.randomUUID()}.${ext}`;
 
-	await r2.put(key, await file.arrayBuffer(), {
-		httpMetadata: { contentType: file.type },
-	});
+	try {
+		await putFile(env.FILES_KV, key, await file.arrayBuffer(), file.type);
+	} catch (failure) {
+		if (failure instanceof InvalidFileKeyError)
+			error(400, 'Invalid storage prefix');
+		error(503, 'File storage unavailable');
+	}
 
 	return Response.json({ path: `/files/${key}` });
 };

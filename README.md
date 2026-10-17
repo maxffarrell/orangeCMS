@@ -1,6 +1,6 @@
 # orangeCMS
 
-An MIT-licensed, general-purpose CMS built with SvelteKit 3, Svelte 5, TypeScript, Tailwind CSS 4, shadcn-svelte, Cloudflare Workers, D1, R2, and Cloudflare Access.
+An MIT-licensed, general-purpose CMS built with SvelteKit 3, Svelte 5, TypeScript, Tailwind CSS 4, shadcn-svelte, Cloudflare Workers, D1, Workers KV, and Cloudflare Access.
 
 Create collections with custom fields, publish entries and pages, build forms, manage uploads, and connect tools through MCP. The core has no required business model or fixed public content URLs.
 
@@ -8,7 +8,7 @@ Create collections with custom fields, publish entries and pages, build forms, m
 
 Install the orangeCMS skills through Claude or ChatGPT/Codex, then run the setup workflow in your own project. Claude Code can install it with `/plugin install orangecms --marketplace maxffarrell/orangeCMS`. See [plugin installation](docs/PLUGINS.md) for marketplace commands, the downloadable package, and optional per-site MCP connections.
 
-For a zero-cost deployment, follow the [Free-plan requirements and billing checks](docs/COSTS.md). No paid OAuth provider is required.
+Uploads use optional Workers KV storage with no R2 fallback. Follow the [Free-plan requirements and billing checks](docs/COSTS.md) before enabling uploads or OAuth remotely. The source does not guarantee a zero bill for an existing account; plans and existing resources must be verified. No paid OAuth provider is required.
 
 ## Local development
 
@@ -27,7 +27,7 @@ The migration creates empty tables; optional starter content lives in `seeds/sta
 pnpm test # unit checks, typecheck, production smoke, and consumer route fixtures
 ```
 
-The production build runs a compiled-Worker smoke test against isolated local D1/R2 bindings, including rendered content, schema-driven editing, form privacy, token scopes, and persistence. It never reads a deployed database.
+The production build runs a compiled-Worker smoke test against isolated local D1/KV bindings, including rendered content, schema-driven editing, form privacy, token scopes, and persistence. It never reads a deployed database.
 
 ## Content and routes
 
@@ -47,6 +47,6 @@ Consumers can pin this repository as a Git submodule and compose `src/` with pri
 
 `pnpm test:unit` exercises real form validation, conditional fields, encryption/redaction, route resolution, and migrated SQLite persistence through a D1-compatible adapter. Token tests check hashing, permissions, revocation, and usage tracking.
 
-`pnpm build` includes the production Worker smoke suite: rendered D1 content, authenticated admin CRUD, scoped MCP edits and audit logs, privacy-preserving form storage/email/export, settings persistence, Access JWT verification, and valid/invalid R2 uploads. All fixtures are synthetic and isolated from deployed resources.
+`pnpm build` includes the production Worker smoke suite: rendered D1 content, authenticated admin CRUD, scoped MCP edits and audit logs, privacy-preserving form storage/email/export, settings persistence, Access JWT verification, and valid/invalid KV uploads. All fixtures are synthetic and isolated from deployed resources.
 
 `pnpm test:routes` builds separate consumer fixtures with remapped public paths and with no public form routes. It verifies former paths return 404, saved public settings reach rendered content, and core admin checks still run when forms are unmounted. GitHub Actions runs all of these checks.

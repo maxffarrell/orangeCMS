@@ -1,6 +1,5 @@
 import type {
 	D1Database,
-	R2Bucket,
 	KVNamespace,
 } from '@cloudflare/workers-types';
 
@@ -17,7 +16,8 @@ declare global {
 			OAUTH_KV?: KVNamespace;
 			/** Optional canonical HTTPS origin for OAuth discovery and token audiences. */
 			OAUTH_ISSUER?: string;
-			FILES: R2Bucket;
+			/** Uploaded files stored in a separate KV namespace. Free limits require Workers Free. */
+			FILES_KV?: KVNamespace;
 			CF_ACCESS_TEAM_DOMAIN?: string;
 			CF_ACCESS_AUD?: string;
 			/** Bearer token that unlocks the MCP admin tools (set with `wrangler secret put`). */

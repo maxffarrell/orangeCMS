@@ -5,7 +5,7 @@ description: Set up or customize an orangeCMS project, including standalone and 
 
 # orangeCMS setup
 
-orangeCMS is a general-purpose SvelteKit 3 / Svelte 5 CMS using TypeScript, Tailwind CSS 4, shadcn-svelte, Cloudflare Workers, D1, R2, and Cloudflare Access. No business domain or public content URL is mandatory.
+orangeCMS is a general-purpose SvelteKit 3 / Svelte 5 CMS using TypeScript, Tailwind CSS 4, shadcn-svelte, Cloudflare Workers, D1, Workers KV, and Cloudflare Access. No business domain or public content URL is mandatory.
 
 ## Find the project
 
@@ -38,18 +38,20 @@ Local development bypasses Cloudflare Access. Keep that server local. Cloud reso
 
 ## Configure production when requested
 
-Cost requirement: follow the project's [zero-cost deployment policy](https://github.com/maxffarrell/orangeCMS/blob/main/docs/COSTS.md). Verify the deployment account uses Workers Free before provisioning or enabling OAuth KV. Do not upgrade plans or enable paid services. Free KV quotas reject excess operations; paid-plan allowances can incur overages. Existing R2 and other products have separate billing, so do not claim the entire account is free without checking them. If billing cannot be verified, leave OAuth unconfigured and report that limitation. Local setup and tests remain local.
+Cost requirement: follow the project's [zero-cost deployment policy](https://github.com/maxffarrell/orangeCMS/blob/main/docs/COSTS.md). Verify the deployment account uses Workers Free before provisioning or enabling upload or OAuth KV. Do not upgrade plans or enable paid services. Free KV quotas reject excess operations; paid-plan allowances can incur overages. Existing R2 and other products have separate billing, so do not claim the entire account is free without checking them. If billing cannot be verified, leave `FILES_KV` and `OAUTH_KV` unconfigured and report that limitation. Local setup and tests remain local. Before pushing a consumer branch, inspect any existing Cloudflare build integration and verify its plan and free allowance; when verification is unavailable, keep changes local and the PR in draft instead of triggering potentially billable builds.
 
-Use installation-owned D1/R2 resources and Wrangler configuration, preserving bindings `DB`, `FILES`, and `ASSETS`. Never copy a different site's resource IDs, content, secrets, or database snapshots. Apply the project's migrations to the selected database; a consumer with an existing migration history must plan upgrades rather than replay a fresh baseline blindly.
+Use installation-owned D1 and KV resources and Wrangler configuration, preserving `DB` and `ASSETS`. Uploads use optional `FILES_KV`; OAuth uses separate optional `OAUTH_KV`, sharing the same account Free-plan allowances. There is no R2 fallback or default R2 binding. Missing storage or exhausted quotas must fail closed instead of enabling billing. Never copy a different site's resource IDs, content, secrets, or database snapshots. Apply the project's migrations to the selected database; a consumer with an existing migration history must plan upgrades rather than replay a fresh baseline blindly.
 
 Configure Access team domain and audience and protect `/admin` and `/api/upload` at the edge. Production Worker authentication verifies Access JWTs and fails closed when unconfigured. Set `FORM_DATA_KEY` to a base64-encoded 32-byte secret for sensitive form answers. Configure notification sender, destination setting, and `EMAIL` binding only when notifications are needed. Sensitive answers are encrypted and excluded from emails and MCP; without the key, sensitive controls are withheld.
 
 For OAuth, connect clients to `/mcp/authorized`. Configure installation-owned `OAUTH_KV` storage and Access-protected `/admin/oauth/authorize`; keep discovery and `/oauth/register`, `/oauth/token`, and `/mcp/authorized` outside edge Access login. Consent defaults to `cms:read`; `cms:write` explicitly enables edits, and `offline_access` enables refreshing the connection. Administrators can revoke grants in **Connected apps**. Preserve `/mcp` for anonymous content and existing manual tokens. Plugin installation alone does not configure hosted OAuth. Use the project's current setup documentation for namespace and deployment details.
 
+For an existing R2 consumer, preserve object keys and content types while migrating. Removing the binding does not migrate objects, disable direct bucket URLs, or stop storage charges. Obtain a complete live inventory, export and hash-verify all objects, import and verify destination readback, then obtain explicit deletion approval before retiring the bucket. A local snapshot alone does not prove live completeness.
+
 Keep credentials in local ignored environment files, client secrets, or provider secret storage. Use the project's current documentation for exact commands and selected resources.
 
 ## Verify the outcome
 
-Run `pnpm test` for unit tests, typecheck, compiled-Worker smoke, and configurable-route fixtures. `pnpm build` includes the isolated local D1/R2 production smoke suite. A consumer may define additional composition and smoke commands; run those too when changing that consumer. Test the actual customized paths and rendered content, including former paths returning 404 where routes were moved.
+Run `pnpm test` for unit tests, typecheck, compiled-Worker smoke, and configurable-route fixtures. `pnpm build` includes the isolated local D1/KV production smoke suite. A consumer may define additional composition and smoke commands; run those too when changing that consumer. Test the actual customized paths and rendered content, including former paths returning 404 where routes were moved.
 
 Before publishing a reusable core, run `pnpm check:public` if available and inspect the staged diff for installation-specific content, domains, contacts, assets, resource IDs, and credentials. Report verified local behavior separately from deployment or remote CI status.

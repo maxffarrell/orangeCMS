@@ -27,6 +27,8 @@ Read the current object and the live tool input schema before writing. Available
 
 `confirm: true` applies the submitted arguments; it is not an immutable preview ID. Re-read and preview again if the object or requested arguments change before applying. Edits are validated, rate-limited, and audited; report errors and do not treat a preview as a saved change.
 
+Uploads use optional `FILES_KV` storage, configured separately from `OAUTH_KV`. If file requests are unavailable, report that the installation needs verified Free-plan storage or has exhausted a quota. Do not enable R2, a paid plan, or another fallback to complete a content edit.
+
 Important data semantics:
 
 - `save_collection.fields` replaces the field definitions. Retain existing definitions unless the user requested their removal.

@@ -19,12 +19,6 @@
     "directory": ".svelte-kit/cloudflare",
     "binding": "ASSETS"
   },
-  "r2_buckets": [
-    {
-      "binding": "FILES",
-      "bucket_name": "orangecms-files"
-    }
-  ],
   "d1_databases": [
     {
       "binding": "DB",

@@ -66,7 +66,7 @@ Both templates are optional, are not auto-discovered, and are excluded from the 
 
 ## Release ZIP and verification
 
-Download the plugin release under the GitHub tag [`plugin-v1.1.1`](https://github.com/maxffarrell/orangeCMS/releases/tag/plugin-v1.1.1), with `orangecms-plugin.zip` as its downloadable asset. You can build the same minimal archive locally:
+Download the plugin release under the GitHub tag [`plugin-v1.2.0`](https://github.com/maxffarrell/orangeCMS/releases/tag/plugin-v1.2.0), with `orangecms-plugin.zip` as its downloadable asset. You can build the same minimal archive locally:
 
 ```sh
 pnpm plugin:package

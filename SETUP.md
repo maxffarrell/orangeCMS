@@ -31,7 +31,7 @@ The core reserves `/admin`, `/api`, `/files`, `/mcp`, `/oauth`, and `/.well-know
 ## Cloudflare resources
 
 1. Install with `pnpm install --frozen-lockfile`.
-2. Create your own D1 database and R2 bucket. Set their names and database ID in `wrangler.jsonc`; keep bindings `DB`, `FILES`, and `ASSETS`.
+2. Configure your installation’s D1 database as `DB` and static assets as `ASSETS` in `wrangler.jsonc`. Upload storage is optional: after verifying the actual account’s Workers Free plan and quotas, manually create a dedicated KV namespace and bind it as `FILES_KV`. Do not provision or bind R2 for new installations. Follow [cost requirements](docs/COSTS.md).
 3. Configure `CF_ACCESS_TEAM_DOMAIN` and set the Access audience with `pnpm exec wrangler secret put CF_ACCESS_AUD`. Protect `/admin` and `/api/upload` at the edge. The Worker also verifies JWT signatures, issuer, audience, and expiration and fails closed when unconfigured.
 4. Initialize the schema with `pnpm db:migrate:local`; review selected resources before running `pnpm db:migrate:remote`. Migrations create empty CMS tables. Starter content is optional and installed separately; see below. Existing consumers must retain and manage their own migration history.
 5. Run `pnpm check` and `pnpm build`, then `pnpm exec wrangler deploy`.
@@ -65,7 +65,15 @@ pnpm db:seed:local
 pnpm dev
 ```
 
-`pnpm dev` serves the application locally with local D1 and R2 bindings. Local migration and seed commands use Wrangler's local persistence; they do not contact your remote database. Local Vite development bypasses Cloudflare Access; keep the dev server local. Previewing the compiled production Worker still requires Access configuration and valid JWTs. `pnpm build` also runs the production Worker smoke suite in an isolated disposable database with its own test credentials and content.
+`pnpm dev` serves the application locally with local D1 and KV bindings. Local migration and seed commands use Wrangler's local persistence; they do not contact your remote database. Local Vite development bypasses Cloudflare Access; keep the dev server local. Previewing the compiled production Worker still requires Access configuration and valid JWTs. `pnpm build` also runs the production Worker smoke suite in an isolated disposable database with its own test credentials and content.
+
+## Upload storage
+
+Uploads use Workers KV through the optional **`FILES_KV`** binding. This is separate from OAuth’s **`OAUTH_KV`** namespace; both consume the same account-wide Free-plan storage and operation allowances. Keep deployment namespaces installation-owned. The default configuration does not create remote namespaces or enable R2.
+
+With no `FILES_KV` binding, upload and file-serving requests return an unavailable response. Storage failures and exhausted quotas fail closed with 503; the CMS does not fall back to R2 or silently enable billing. Uploads remain managed in the CMS once a verified Free-plan namespace is configured. KV is subject to platform limits and propagation delay; do not describe its free allowance as unlimited capacity or immediate consistency.
+
+Keep existing `/files/…` references stable during a storage migration by preserving object keys and content types. Removing an R2 binding changes the application’s storage access; it does not copy its objects, disable direct public bucket URLs, delete the bucket, or end storage charges. See the [R2 retirement procedure](docs/COSTS.md#retiring-an-existing-r2-bucket) before changing a deployed consumer.
 
 ## Forms and privacy
 
@@ -81,7 +89,7 @@ Use `/mcp/authorized` for OAuth connections; it requires authentication and supp
 
 ## OAuth connections
 
-OAuth uses the installation's own Cloudflare Access sign-in and a consent screen, backed by `@cloudflare/workers-oauth-provider`. There is no central orangeCMS login service. In addition to D1/R2, bind a Workers KV namespace as **`OAUTH_KV`** in the installation's Wrangler configuration. Placeholder configuration does not create or configure a hosted namespace. Optional `OAUTH_ISSUER` must exactly match the canonical site origin; otherwise the configured canonical hostname or current origin is used. Use separate local/preview and production storage, following your chosen deployment flow. When a consumer configures a production canonical hostname, set a local `OAUTH_ISSUER` matching the development server origin to test OAuth locally.
+OAuth uses the installation's own Cloudflare Access sign-in and a consent screen, backed by `@cloudflare/workers-oauth-provider`. There is no central orangeCMS login service. For OAuth, bind a separate Workers KV namespace as **`OAUTH_KV`** in the installation's Wrangler configuration. Placeholder configuration does not create or configure a hosted namespace. Optional `OAUTH_ISSUER` must exactly match the canonical site origin; otherwise the configured canonical hostname or current origin is used. Use separate local/preview and production storage, following your chosen deployment flow. When a consumer configures a production canonical hostname, set a local `OAUTH_ISSUER` matching the development server origin to test OAuth locally.
 
 Protect `/admin/*`, including `/admin/oauth/authorize`, with the installation's Cloudflare Access application and configure `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`. Keep OAuth discovery, `/oauth/register`, `/oauth/token`, and `/mcp/authorized` reachable by remote clients without an edge Access login. The browser consent route verifies the Access identity; MCP requests authenticate with OAuth bearer tokens. Production authorization must not rely on the local development Access bypass.
 
@@ -93,4 +101,16 @@ A deployment needs the KV binding, Access configuration, and current source befo
 
 ## Cost requirement
 
-Follow the [zero-cost deployment policy](docs/COSTS.md). OAuth supports Workers Free with KV; verify the actual account is on the Free plan before enabling it. Free-plan quotas fail closed rather than charge overages. Do not upgrade or enable paid services. Existing R2 and other products have separate pricing, so the whole account must be checked before claiming a zero Cloudflare bill. If account billing cannot be verified, keep OAuth unconfigured.
+Follow the [zero-cost deployment policy](docs/COSTS.md). OAuth supports Workers Free with KV; verify the actual account is on the Free plan before enabling it. Free-plan quotas fail closed rather than charge overages. Do not upgrade or enable paid services. Existing R2 and other products have separate pricing, so the whole account must be checked before claiming a zero Cloudflare bill. If account billing cannot be verified, keep `FILES_KV` and `OAUTH_KV` unconfigured.
+
+### Prepare a verified file import offline
+
+The migration preparer reads a private backup directory and produces a Wrangler KV bulk-import file without contacting Cloudflare:
+
+```sh
+node scripts/prepare-files-import.mjs --manifest /private/backup/manifest.json --source /private/backup/objects --output /private/backup/kv-import.json
+```
+
+The manifest is `{ "objects": [{ "key": "documents/example.pdf", "size": 123, "sha256": "<64 lowercase hex characters>", "http_metadata": { "contentType": "application/pdf" } }] }`. Source files must exist at the matching relative keys. Every byte count and hash is verified. Missing MIME types are inferred only from common file extensions, otherwise use `application/octet-stream`; review the reported inference count. The output contains private file bytes: keep it outside public repositories. Choose a new output path; existing files, including source objects and the manifest, are never overwritten. The encoded bulk payload is capped at 80 MiB to stay below the provider’s request limit. Split a larger inventory into reviewed manifest subsets with separate output paths; preserve the full inventory for final reconciliation.
+
+After verifying the correct account is on Workers Free and its shared quota has capacity, an authorized operator can import the reviewed payload with `pnpm exec wrangler kv bulk put /private/backup/kv-import.json --binding FILES_KV --remote`. Read back every destination object and compare its SHA-256 before planning any source bucket deletion. A local snapshot is not a complete live inventory.
