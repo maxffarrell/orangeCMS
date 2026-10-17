@@ -236,7 +236,7 @@ importers:
         specifier: 4.3.3
         version: 4.3.3(vite@8.3.2(esbuild@0.28.1)(jiti@2.7.0))
       '@tanstack/svelte-table':
-        specifier: ^9.2.4
+        specifier: 9.2.4
         version: 9.2.4(svelte@5.57.1)
       '@tanstack/table-core':
         specifier: 9.2.4
