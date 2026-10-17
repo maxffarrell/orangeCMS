@@ -59,6 +59,8 @@ export interface McpContext {
 	canWrite?: boolean;
 	/** api_tokens.id of the caller, or null for the MCP_ADMIN_TOKEN secret. */
 	tokenId?: number | null;
+	/** Stable OAuth grant identity, separate from API token ids. */
+	actorKey?: string;
 }
 
 interface Tool {
@@ -399,13 +401,23 @@ function writeTool(def: {
 				};
 			}
 			const tokenId = ctx.tokenId ?? null;
-			if ((await mcpWritesLastHour(ctx.db, tokenId)) >= MCP_WRITES_PER_HOUR) {
+			if (
+				(await mcpWritesLastHour(ctx.db, tokenId, ctx.actorKey)) >=
+				MCP_WRITES_PER_HOUR
+			) {
 				throw new ToolError(
 					`Edit limit reached (${MCP_WRITES_PER_HOUR} per hour per token). Try again later.`,
 				);
 			}
 			const extra = (await plan.apply()) ?? {};
-			await recordAudit(ctx.db, tokenId, def.name, plan.target, changes);
+			await recordAudit(
+				ctx.db,
+				tokenId,
+				def.name,
+				plan.target,
+				changes,
+				ctx.actorKey,
+			);
 			return { applied: true, target: plan.target, changes, ...extra };
 		},
 	};

@@ -1,9 +1,22 @@
-import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
+import type {
+	D1Database,
+	R2Bucket,
+	KVNamespace,
+} from '@cloudflare/workers-types';
 
 declare global {
+	namespace App {
+		interface Locals {
+			adminIdentity?: { sub: string; email?: string };
+		}
+	}
 	namespace Cloudflare {
 		interface Env {
 			DB: D1Database;
+			/** Per-installation OAuth state; absence disables OAuth and preserves API tokens. */
+			OAUTH_KV?: KVNamespace;
+			/** Optional canonical HTTPS origin for OAuth discovery and token audiences. */
+			OAUTH_ISSUER?: string;
 			FILES: R2Bucket;
 			CF_ACCESS_TEAM_DOMAIN?: string;
 			CF_ACCESS_AUD?: string;

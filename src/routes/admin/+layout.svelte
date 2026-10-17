@@ -66,6 +66,12 @@
 			exact: false,
 			icon: KeyRoundIcon,
 		},
+		{
+			href: '/admin/connections',
+			label: 'Connected apps',
+			exact: false,
+			icon: KeyRoundIcon,
+		},
 	];
 
 	function isActive(item: (typeof nav)[0]): boolean {

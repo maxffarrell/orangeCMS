@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"orangecms": {
+			"type": "http",
+			"url": "${ORANGECMS_MCP_URL:-http://localhost:5174/mcp}",
+			"headers": {
+				"Authorization": "Bearer ${ORANGECMS_MCP_TOKEN:-}"
+			}
+		}
+	}
+}

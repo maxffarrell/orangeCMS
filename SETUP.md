@@ -15,18 +15,18 @@ Example route definitions:
 
 ```ts
 routes: [
-  { path: "/", kind: "page", page: "home" },
-  { path: "/journal", kind: "collection", collection: "articles" },
-  { path: "/journal/:slug", kind: "entry", collection: "articles" },
-  { path: "/responses", kind: "forms" },
-  { path: "/responses/:slug", kind: "form" },
-  { path: "/data-policy", kind: "page", page: "privacy" },
+	{ path: '/', kind: 'page', page: 'home' },
+	{ path: '/journal', kind: 'collection', collection: 'articles' },
+	{ path: '/journal/:slug', kind: 'entry', collection: 'articles' },
+	{ path: '/responses', kind: 'forms' },
+	{ path: '/responses/:slug', kind: 'form' },
+	{ path: '/data-policy', kind: 'page', page: 'privacy' },
 ];
 ```
 
 The collection slug identifies stored content independently of its URL. Create collections and their field schemas in the CMS; no schema changes or new route directories are required for a new content type. Supported custom field controls include text, multiline text, Markdown, numbers, booleans, URLs, and images. Draft entries remain unavailable on public routes and anonymous MCP queries.
 
-The core reserves `/admin`, `/api`, `/files`, and `/mcp` (including their descendants). These are infrastructure endpoints, not content routes. Custom public templates can be added as consumer overlays when the standard collection/page views are insufficient.
+The core reserves `/admin`, `/api`, `/files`, `/mcp`, `/oauth`, and `/.well-known` (including their descendants). These are infrastructure endpoints, not content routes. Custom public templates can be added as consumer overlays when the standard collection/page views are insufficient.
 
 ## Cloudflare resources
 
@@ -77,4 +77,16 @@ For notifications, configure `FORM_EMAIL_FROM`, Cloudflare Email Routing, and th
 
 The stateless MCP endpoint is `/mcp`. Public tools expose published content; scoped bearer tokens unlock administrative reads and opt-in edits. Tokens are hashed in D1, shown once, and revocable. Write tools preview by default and require explicit confirmation to apply changes; writes are validated, rate-limited, and audited.
 
-The optional `examples/claude-mcp.json` connector template reads `ORANGECMS_MCP_URL` and `ORANGECMS_MCP_TOKEN` from the environment. Never commit credentials, `.dev.vars`, or database snapshots. Run `pnpm mcp:check` against your local endpoint.
+Use `/mcp/authorized` for OAuth connections; it requires authentication and supports reliable client sign-in discovery. The original `/mcp` endpoint preserves anonymous published-content access and existing bearer-token behavior. The optional `examples/claude-mcp.json` template uses OAuth with no fixed header; `examples/claude-mcp-token.json` uses `ORANGECMS_MCP_TOKEN` for a manual token connection to `/mcp`. Never commit credentials, `.dev.vars`, or database snapshots. Run `pnpm mcp:check` against your local endpoint.
+
+## OAuth connections
+
+OAuth uses the installation's own Cloudflare Access sign-in and a consent screen, backed by `@cloudflare/workers-oauth-provider`. There is no central orangeCMS login service. In addition to D1/R2, bind a Workers KV namespace as **`OAUTH_KV`** in the installation's Wrangler configuration. Placeholder configuration does not create or configure a hosted namespace. Optional `OAUTH_ISSUER` must exactly match the canonical site origin; otherwise the configured canonical hostname or current origin is used. Use separate local/preview and production storage, following your chosen deployment flow. When a consumer configures a production canonical hostname, set a local `OAUTH_ISSUER` matching the development server origin to test OAuth locally.
+
+Protect `/admin/*`, including `/admin/oauth/authorize`, with the installation's Cloudflare Access application and configure `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`. Keep OAuth discovery, `/oauth/register`, `/oauth/token`, and `/mcp/authorized` reachable by remote clients without an edge Access login. The browser consent route verifies the Access identity; MCP requests authenticate with OAuth bearer tokens. Production authorization must not rely on the local development Access bypass.
+
+Token refresh and RFC 7009 revocation share `/oauth/token`; clients discover the revocation endpoint from metadata. Clients connect to `https://your-site.example/mcp/authorized`. The Worker publishes protected-resource and authorization-server discovery metadata and supports authorization-code flow with S256 PKCE and dynamic client registration. Clients must use the exact callback URL they register; do not substitute a guessed ChatGPT or Claude callback. Both Client ID Metadata Documents (CIMD, including Claude’s published identity) and dynamic registration (**Register automatically** in Claude) are supported.
+
+Permissions are `cms:read` for administrative reads, `cms:write` for editing, and `offline_access` for refreshing a connection. Read is the default; editing requires explicit consent. Write tools retain their preview-and-confirm behavior and audit logging. Sensitive form answers remain excluded from MCP regardless of the grant. Administrators manage revocation through **Connected apps** at `/admin/connections`. Access tokens expire after one hour; refresh tokens after 30 days. Existing API tokens remain independently managed in `/admin/tokens`.
+
+A deployment needs the KV binding, Access configuration, and current source before OAuth will work remotely. Verify discovery, browser consent, read-only versus editing scope enforcement, refresh, and revocation against the intended environment. Local automated tests do not prove a successful connection in a hosted ChatGPT or Claude account. See [plugin connection instructions](docs/PLUGINS.md#connect-a-site-when-needed).

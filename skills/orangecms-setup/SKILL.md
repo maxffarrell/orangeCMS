@@ -32,7 +32,7 @@ Local development bypasses Cloudflare Access. Keep that server local. Cloud reso
 - Standalone: edit `src/lib/site.ts`, templates, styles, and assets in the project.
 - Private consumer: keep site configuration, content, branding, deployment resources, and custom templates in the consumer; pin the shared core as a submodule. Follow the consumer's source-composition script before framework commands. CI must check out submodules recursively. Avoid changing the pinned core just to customize one site.
 - `site.routes` maps public URL patterns to `page`, `collection`, `entry`, `forms`, or `form` views. A collection's stored slug is independent of its public URL. Pair collection index and entry routes as needed, for example `/journal` and `/journal/:slug`. Set navigation separately and update `privacyPath` when remapping the privacy page.
-- `/admin`, `/api`, `/files`, and `/mcp`, including descendants, are reserved infrastructure paths. New content types do not need dedicated SvelteKit route directories.
+- `/admin`, `/api`, `/files`, `/mcp`, `/oauth`, and `/.well-known`, including descendants, are reserved infrastructure paths. New content types do not need dedicated SvelteKit route directories.
 - Define collections and their custom field schemas in the CMS. Controls include text, multiline text, Markdown, number, boolean, URL, and image. Check existing schemas before modifying them; schema and value replacements can remove omitted fields.
 - `site.settingsFields` defines editable settings keys. `site.publicSettings` is an explicit public allowlist, empty by default. Keep notification destinations and other private settings out of it. Branding, host redirects, MCP identity, and email sender labels also live in site configuration.
 
@@ -41,6 +41,8 @@ Local development bypasses Cloudflare Access. Keep that server local. Cloud reso
 Use installation-owned D1/R2 resources and Wrangler configuration, preserving bindings `DB`, `FILES`, and `ASSETS`. Never copy a different site's resource IDs, content, secrets, or database snapshots. Apply the project's migrations to the selected database; a consumer with an existing migration history must plan upgrades rather than replay a fresh baseline blindly.
 
 Configure Access team domain and audience and protect `/admin` and `/api/upload` at the edge. Production Worker authentication verifies Access JWTs and fails closed when unconfigured. Set `FORM_DATA_KEY` to a base64-encoded 32-byte secret for sensitive form answers. Configure notification sender, destination setting, and `EMAIL` binding only when notifications are needed. Sensitive answers are encrypted and excluded from emails and MCP; without the key, sensitive controls are withheld.
+
+For OAuth, connect clients to `/mcp/authorized`. Configure installation-owned `OAUTH_KV` storage and Access-protected `/admin/oauth/authorize`; keep discovery and `/oauth/register`, `/oauth/token`, and `/mcp/authorized` outside edge Access login. Consent defaults to `cms:read`; `cms:write` explicitly enables edits, and `offline_access` enables refreshing the connection. Administrators can revoke grants in **Connected apps**. Preserve `/mcp` for anonymous content and existing manual tokens. Plugin installation alone does not configure hosted OAuth. Use the project's current setup documentation for namespace and deployment details.
 
 Keep credentials in local ignored environment files, client secrets, or provider secret storage. Use the project's current documentation for exact commands and selected resources.
 

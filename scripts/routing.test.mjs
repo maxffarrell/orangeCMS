@@ -25,6 +25,8 @@ test('reserved, duplicate, and ambiguous routes fail closed', () => {
 	for (const routes of [
 		[{ path: '/admin/custom', kind: 'page', page: 'custom' }],
 		[{ path: '/mcp/:slug', kind: 'form' }],
+		[{ path: '/oauth/custom', kind: 'page', page: 'custom' }],
+		[{ path: '/.well-known/custom', kind: 'page', page: 'custom' }],
 		[
 			{ path: '/', kind: 'page', page: 'a' },
 			{ path: '/', kind: 'page', page: 'b' },

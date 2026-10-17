@@ -1,5 +1,12 @@
 import type { PublicRoute } from './site.js';
-const reserved = new Set(['admin', 'api', 'files', 'mcp']);
+const reserved = new Set([
+	'admin',
+	'api',
+	'files',
+	'mcp',
+	'oauth',
+	'.well-known',
+]);
 const parameter = /^:[a-zA-Z_][a-zA-Z0-9_]*$/;
 const specificity = (parts: string[]) =>
 	parts.filter((part) => !part.startsWith(':')).length;

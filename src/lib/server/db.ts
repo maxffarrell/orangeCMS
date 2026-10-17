@@ -726,6 +726,7 @@ const AUDIT_KEEP = 500;
 
 export interface AuditEntry {
 	id: number;
+	actor_key: string | null;
 	token_id: number | null;
 	token_name: string | null;
 	tool: string;
@@ -737,13 +738,14 @@ export interface AuditEntry {
 export async function mcpWritesLastHour(
 	db: D1Database,
 	tokenId: number | null,
+	actorKey?: string,
 ): Promise<number> {
 	const row = await db
 		.prepare(
 			`SELECT COUNT(*) AS n FROM mcp_audit
-			  WHERE token_id IS ? AND created_at > datetime('now', '-1 hour')`,
+			  WHERE actor_key IS ? AND token_id IS ? AND created_at > datetime('now', '-1 hour')`,
 		)
-		.bind(tokenId)
+		.bind(actorKey ?? null, tokenId)
 		.first<{ n: number }>();
 	return row?.n ?? 0;
 }
@@ -754,17 +756,19 @@ export async function recordAudit(
 	tool: string,
 	target: string,
 	changes: unknown,
+	actorKey?: string,
 ): Promise<void> {
 	await db.batch([
 		db
 			.prepare(
-				'INSERT INTO mcp_audit (token_id, tool, target, changes) VALUES (?, ?, ?, ?)',
+				'INSERT INTO mcp_audit (token_id, tool, target, changes, actor_key) VALUES (?, ?, ?, ?, ?)',
 			)
 			.bind(
 				tokenId,
 				tool,
 				target.slice(0, 200),
 				JSON.stringify(changes).slice(0, 4000),
+				actorKey ?? null,
 			),
 		db.prepare(
 			`DELETE FROM mcp_audit WHERE id <= (SELECT id FROM mcp_audit ORDER BY id DESC LIMIT 1 OFFSET ${AUDIT_KEEP})`,
@@ -778,7 +782,7 @@ export async function listAudit(
 ): Promise<AuditEntry[]> {
 	const result = await db
 		.prepare(
-			`SELECT a.id, a.token_id, t.name AS token_name, a.tool, a.target, a.changes, a.created_at
+			`SELECT a.id, a.token_id, a.actor_key, COALESCE(t.name, CASE WHEN a.actor_key IS NOT NULL THEN 'OAuth connection' END) AS token_name, a.tool, a.target, a.changes, a.created_at
 			   FROM mcp_audit a LEFT JOIN api_tokens t ON t.id = a.token_id
 			  ORDER BY a.id DESC LIMIT ?`,
 		)

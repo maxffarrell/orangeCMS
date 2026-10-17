@@ -33,6 +33,8 @@ const {
 	updatePage,
 	getEntries,
 	saveEntry,
+	mcpWritesLastHour,
+	recordAudit,
 } = await import(pathToFileURL(join(temp, 'src/lib/server/db.js')).href);
 const schema = {
 	slug: 'articles',
@@ -145,4 +147,46 @@ test('editing an entry slug preserves its stable id and collection boundary', as
 	assert.equal(statements[0].values[0], 'renamed');
 	assert.deepEqual(statements[0].values.slice(-2), ['articles', 7]);
 	await assert.rejects(() => saveEntry(db, { ...entry, id: 99 }));
+});
+
+test('OAuth audit quotas retain grant identity independently of API token ids', async () => {
+	const statements = [];
+	const db = {
+		prepare(sql) {
+			return {
+				sql,
+				values: [],
+				bind(...values) {
+					this.values = values;
+					return this;
+				},
+				async first() {
+					statements.push(this);
+					return { n: 2 };
+				},
+			};
+		},
+		async batch(items) {
+			statements.push(...items);
+		},
+	};
+	assert.equal(await mcpWritesLastHour(db, null, 'oauth:user:grant-a'), 2);
+	assert.deepEqual(statements[0].values, ['oauth:user:grant-a', null]);
+	await mcpWritesLastHour(db, 17);
+	assert.deepEqual(statements[1].values, [null, 17]);
+	await recordAudit(
+		db,
+		null,
+		'save_page',
+		'page:home',
+		[],
+		'oauth:user:grant-b',
+	);
+	assert.deepEqual(statements[2].values, [
+		null,
+		'save_page',
+		'page:home',
+		'[]',
+		'oauth:user:grant-b',
+	]);
 });

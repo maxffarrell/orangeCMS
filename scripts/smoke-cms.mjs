@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { testOAuth } from './oauth-smoke.mjs';
 import ts from 'typescript';
 import { pathToFileURL } from 'node:url';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
@@ -178,7 +179,7 @@ try {
 	await writeFile(
 		wrapper,
 		`
-    import worker from ${JSON.stringify(resolve('.svelte-kit/cloudflare/_worker.js'))};
+    import worker from ${JSON.stringify(resolve(config.main))};
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (input, init) => {
       const url = typeof input === 'string' ? input : input.url ?? input.href;
@@ -200,6 +201,10 @@ try {
 		FORM_EMAIL_FROM: 'forms@smoke.example.test',
 		FORM_DATA_KEY: Buffer.alloc(32, 7).toString('base64'),
 	};
+	config.kv_namespaces = [
+		{ binding: 'OAUTH_KV', id: '00000000000000000000000000000000' },
+	];
+	config.vars.OAUTH_ISSUER = origin;
 	const configPath = join(dir, 'wrangler.json');
 	await writeFile(configPath, JSON.stringify(config));
 	const local = ['--config', configPath, '--persist-to', join(dir, 'state')];
@@ -610,6 +615,7 @@ try {
 		);
 	}
 	console.log('PASS MCP endpoint serves public tools and gates admin tools');
+	await testOAuth({ origin, adminJwt });
 	// Tokens created in the admin UI authorize MCP; revoking them disables access.
 	const createdToken = await fetch(origin + '/admin/tokens?/create', {
 		method: 'POST',
