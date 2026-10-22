@@ -56,7 +56,7 @@ Existing databases that previously applied `0002_seed.sql` need no rollback, res
 
 ## Local development
 
-Use Node.js 22.17 or newer and pnpm 12 or newer. For local development, install dependencies and use the placeholder resource configuration; no cloud resources need to be provisioned:
+Use Node.js 26.12.1 or newer on the 26.x line and pnpm 12 or newer. For local development, install dependencies and use the placeholder resource configuration; no cloud resources need to be provisioned:
 
 ```sh
 pnpm db:migrate:local

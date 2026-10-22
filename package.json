@@ -5,7 +5,7 @@
 	"type": "module",
 	"packageManager": "pnpm@12.4.1",
 	"engines": {
-		"node": ">=22.17.0",
+		"node": "^26.12.1",
 		"pnpm": ">=12.0.0"
 	},
 	"imports": {
@@ -30,7 +30,8 @@
 		"db:seed:local": "wrangler d1 execute DB --local --file=seeds/starter.sql",
 		"db:seed:remote": "wrangler d1 execute DB --remote --file=seeds/starter.sql",
 		"plugin:package": "node scripts/package-plugin.mjs",
-		"publish:static": "node scripts/publish-static.mjs"
+		"publish:static": "node scripts/publish-static.mjs",
+		"preinstall": "node scripts/check-node.mjs"
 	},
 	"dependencies": {
 		"@cloudflare/workers-oauth-provider": "1.2.3",
