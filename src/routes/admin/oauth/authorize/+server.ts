@@ -24,7 +24,9 @@ function page(body: string, status = 200, extra?: Headers) {
 	headers.set('Content-Type', 'text/html; charset=utf-8');
 	headers.set('Cache-Control', 'no-store');
 	headers.set('X-Frame-Options', 'DENY');
-	headers.set('Referrer-Policy', 'no-referrer');
+	// Not 'no-referrer': browsers then send "Origin: null" on the page's own same-origin form POST,
+	// which the CSRF check rightly rejects ("Cross-site POST form submissions are forbidden").
+	headers.set('Referrer-Policy', 'same-origin');
 	headers.set(
 		'Content-Security-Policy',
 		"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
