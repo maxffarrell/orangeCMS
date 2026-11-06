@@ -216,10 +216,15 @@ export async function testOAuth({
 		'framework still rejects cross-site admin form posts',
 	);
 	const csrf = await consentPage('cms:read');
+	const unbound = await decide({ ...csrf, cookie: '' }, ['cms:read']);
 	assert.equal(
-		(await decide({ ...csrf, cookie: '' }, ['cms:read'])).status,
+		unbound.status,
 		400,
 		'consent cannot be forged without browser cookie',
+	);
+	assert.ok(
+		(await unbound.text()).includes('not started in this browser'),
+		'a rejected consent explains why, so failures can be diagnosed',
 	);
 	const crossOrigin = await consentPage('cms:read');
 	assert.ok(
