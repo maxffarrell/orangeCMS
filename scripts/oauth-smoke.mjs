@@ -92,6 +92,13 @@ export async function testOAuth({
 			response.headers.get('content-security-policy') ?? '',
 			/frame-ancestors 'none'/,
 		);
+		// form-action also governs the redirect after Connect/Cancel: without the client's origin the
+		// browser drops the 302 back to the client, so the first click "does nothing".
+		assert.match(
+			response.headers.get('content-security-policy') ?? '',
+			/form-action 'self' http:\/\/127\.0\.0\.1:34791;/,
+			'consent form may redirect to the registered client origin, and only there',
+		);
 		// A browser sends "Origin: null" on this page's same-origin POST under 'no-referrer', which the
 		// CSRF check rejects, so the Connect button would fail for real users.
 		assert.equal(

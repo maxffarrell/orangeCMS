@@ -19,7 +19,22 @@ const escape = (value: string) =>
 				char
 			]!,
 	);
-function page(body: string, status = 200, extra?: Headers) {
+// CSP form-action also governs where a form submission may be REDIRECTED. Approve and Deny answer
+// with a 302 to the client's registered redirect URI, so with plain 'self' the browser silently
+// drops that redirect: the first Connect click spends the one-time consent and "does nothing", and a
+// second click then fails as already used. Allow exactly the validated redirect URI's origin.
+function formActionSource(redirectUri: string): string | null {
+	try {
+		const u = new URL(redirectUri);
+		if (u.protocol === 'https:' || u.protocol === 'http:') return u.origin;
+		// Native-app custom schemes (e.g. cursor:) have no origin; a scheme-source covers them.
+		return /^[a-z][a-z0-9+.-]*:$/.test(u.protocol) ? u.protocol : null;
+	} catch {
+		return null;
+	}
+}
+
+function page(body: string, status = 200, extra?: Headers, formAction?: string | null) {
 	const headers = new Headers(extra);
 	headers.set('Content-Type', 'text/html; charset=utf-8');
 	headers.set('Cache-Control', 'no-store');
@@ -29,7 +44,7 @@ function page(body: string, status = 200, extra?: Headers) {
 	headers.set('Referrer-Policy', 'same-origin');
 	headers.set(
 		'Content-Security-Policy',
-		"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+		`default-src 'none'; style-src 'unsafe-inline'; form-action 'self'${formAction ? ' ' + formAction : ''}; frame-ancestors 'none'; base-uri 'none'`,
 	);
 	return new Response(
 		`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect to ${escape(site.adminName)}</title><style>body{font:16px/1.55 system-ui,sans-serif;color:#202020;background:#faf9f6;margin:0;padding:32px 16px}main{max-width:600px;margin:4vh auto;background:white;border:1px solid #dedbd5;border-radius:16px;padding:28px}h1{font-size:28px;line-height:1.2}h2{font-size:18px}p{overflow-wrap:anywhere}.muted{color:#625c55}.notice{background:#fff4df;padding:12px;border-radius:8px}label{display:block;margin:16px 0}input{margin-right:8px}button{font:inherit;cursor:pointer;border:1px solid #ccc;border-radius:8px;padding:10px 18px;background:white;margin:8px 8px 0 0}button[value=approve]{background:#202020;color:white}small{display:block;margin-left:26px}code{overflow-wrap:anywhere}</style></head><body><main>${body}</main></body></html>`,
@@ -90,6 +105,7 @@ export const GET: RequestHandler = async ({ request, url, locals }) => {
 			`<p class="muted">${escape(site.adminName)}</p><h1>Connect ${escape(description.clientName)}?</h1><p>This application is requesting access to <strong>${escape(new URL(getOAuthResource(url.origin)).host)}</strong>.</p>${description.clientDomain ? `<p>Client identity domain: <strong>${escape(description.clientDomain)}</strong></p>` : '<p class="notice">The application name is supplied by the application and is not a verified identity.</p>'}<p>After approval, your browser will return to <strong>${escape(description.redirectHost)}</strong>.</p><p class="muted"><code>${escape(description.redirectUri)}</code></p>${description.redirectIsLoopback ? '<p class="notice">This callback connects to an application on your computer. Another local process could be listening at this address; continue only if you started this connection.</p>' : ''}<h2>Permissions</h2><form method="post"><input type="hidden" name="handle" value="${escape(transaction.handle)}"><input type="hidden" name="scope" value="cms:read"><p><strong>Read site content and administrative data</strong><br><span class="muted">Required for this connection. Sensitive form answers remain excluded.</span></p>${wantsWrite ? '<label><input type="checkbox" name="scope" value="cms:write">Allow editing<small>Can change collections, entries, pages, settings, and forms. Each write still requires a preview and confirmation.</small></label>' : ''}${wantsOffline ? '<label><input type="checkbox" name="scope" value="offline_access" checked>Stay connected<small>Allow the client to refresh its access without another browser sign-in.</small></label>' : ''}<p class="muted">You can revoke access under Connected apps.</p><button type="submit" name="decision" value="approve">Connect</button><button type="submit" name="decision" value="deny">Cancel</button></form>`,
 			200,
 			transaction.headers,
+			formActionSource(description.redirectUri),
 		);
 	} catch (error) {
 		return authorizationFailure(error);
