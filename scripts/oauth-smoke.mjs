@@ -92,6 +92,13 @@ export async function testOAuth({
 			response.headers.get('content-security-policy') ?? '',
 			/frame-ancestors 'none'/,
 		);
+		// A browser sends "Origin: null" on this page's same-origin POST under 'no-referrer', which the
+		// CSRF check rejects, so the Connect button would fail for real users.
+		assert.equal(
+			response.headers.get('referrer-policy'),
+			'same-origin',
+			'consent page must keep real same-origin Origin headers on its form post',
+		);
 		const handle = /name="handle"\s+value="([^"]+)"/.exec(html)?.[1];
 		assert.ok(handle, 'browser-bound consent handle rendered');
 		const cookie = response.headers
