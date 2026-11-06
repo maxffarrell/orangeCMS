@@ -26,6 +26,25 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const path = event.url.pathname;
+
+	// Same rule as SvelteKit's built-in check (disabled in vite.config.ts): a form-type or untyped
+	// POST/PUT/PATCH/DELETE must come from this origin. /oauth/token is exempt because OAuth
+	// clients call it server-to-server with a form body and no Origin; it authenticates by
+	// authorization code + PKCE, not by ambient credentials.
+	if (
+		['POST', 'PUT', 'PATCH', 'DELETE'].includes(event.request.method) &&
+		path !== '/oauth/token'
+	) {
+		const contentType = event.request.headers.get('content-type');
+		const formLike = !contentType || /^(application\/x-www-form-urlencoded|multipart\/form-data|text\/plain)\b/i.test(contentType);
+		if (formLike && event.request.headers.get('origin') !== event.url.origin) {
+			return new Response(`Cross-site ${event.request.method} form submissions are forbidden`, {
+				status: 403,
+				headers: { 'Content-Type': 'text/plain' }
+			});
+		}
+	}
+
 	const isAdmin = path === '/admin' || path.startsWith('/admin/');
 	const isUpload = path === '/api/upload' || path.startsWith('/api/upload/');
 	if ((isAdmin || isUpload) && !dev) {
@@ -61,6 +80,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 		} catch {
 			return unauthorized();
 		}
+	}
+
+	// The admin (including the OAuth approval screen) must never be framed: a hidden iframe could
+	// trick a signed-in admin into clicking "Allow access".
+	if (isAdmin) {
+		event.setHeaders({
+			'X-Frame-Options': 'DENY',
+			'Content-Security-Policy': "frame-ancestors 'none'"
+		});
 	}
 
 	return resolve(event);

@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { verifyApiToken } from '#lib/server/db.js';
 import { handleRpc, type RpcResponse } from '#lib/server/mcp.js';
+import { ACCESS_PREFIX, verifyOAuthAccessToken } from '#lib/server/oauth.js';
 import type { RequestHandler } from './$types';
 
 // Streamable HTTP MCP endpoint (stateless, JSON responses). Public tools need no
@@ -50,15 +51,22 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	const auth = request.headers.get('Authorization')?.replace(/^Bearer\s*$/i, '');
 	if (auth) {
 		const token = /^Bearer\s+(.+)$/i.exec(auth)?.[1];
-		// Tokens created in /admin/tokens, or the optional MCP_ADMIN_TOKEN secret.
-		// The env secret is read-only; editing needs a write-enabled token from /admin/tokens.
+		// Tokens created in /admin/tokens, OAuth access tokens issued to connectors (ChatGPT,
+		// Claude) after an admin approved them, or the optional MCP_ADMIN_TOKEN secret.
+		// The env secret is read-only; editing needs a write-enabled token or an approved connector.
 		const secretMatch = !!token && !!env.MCP_ADMIN_TOKEN && safeEqual(token, env.MCP_ADMIN_TOKEN);
-		const row = token && !secretMatch ? await verifyApiToken(db, token) : null;
-		if (!secretMatch && !row) {
-			return json({ error: 'invalid_token' }, 401, { 'WWW-Authenticate': 'Bearer error="invalid_token"' });
+		const oauth = token && !secretMatch && token.startsWith(ACCESS_PREFIX) ? await verifyOAuthAccessToken(db, token, url.origin) : null;
+		const row = token && !secretMatch && !oauth ? await verifyApiToken(db, token) : null;
+		if (!secretMatch && !oauth && !row) {
+			return json({ error: 'invalid_token' }, 401, {
+				'WWW-Authenticate': `Bearer error="invalid_token", resource_metadata="${url.origin}/.well-known/oauth-protected-resource"`
+			});
 		}
 		admin = true;
-		if (row) {
+		if (oauth) {
+			canWrite = true;
+			tokenId = oauth.id;
+		} else if (row) {
 			canWrite = row.canWrite;
 			tokenId = row.id;
 		}

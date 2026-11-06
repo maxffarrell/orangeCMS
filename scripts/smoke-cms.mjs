@@ -732,6 +732,115 @@ try {
 		true,
 	);
 	console.log('PASS edit tokens preview, validate, apply and audit changes');
+	// OAuth connector flow (ChatGPT / Claude): discovery, registration, PKCE, admin approval, tokens.
+	{
+		const { createHash, randomBytes } = await import('node:crypto');
+		const b64u = (buf) => buf.toString('base64url');
+		const prm = await (await fetch(origin + '/.well-known/oauth-protected-resource')).json();
+		assert.equal(prm.resource, origin + '/mcp');
+		assert.deepEqual(prm.authorization_servers, [origin]);
+		assert.equal(
+			(await (await fetch(origin + '/.well-known/oauth-protected-resource/mcp')).json()).resource,
+			prm.resource,
+		);
+		const asm = await (await fetch(origin + '/.well-known/oauth-authorization-server')).json();
+		assert.deepEqual(asm.code_challenge_methods_supported, ['S256']);
+		assert.equal(asm.token_endpoint, origin + '/oauth/token');
+		assert.equal(asm.registration_endpoint, origin + '/oauth/register');
+		const denied = await fetch(origin + '/mcp', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Authorization: 'Bearer wrong' },
+			body: '{}',
+		});
+		assert.equal(denied.status, 401);
+		assert.match(denied.headers.get('www-authenticate'), /resource_metadata=/);
+
+		const redirectUri = 'https://chatgpt.com/connector_platform_oauth_redirect';
+		const register = (body) =>
+			fetch(origin + '/oauth/register', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body),
+			});
+		assert.equal((await register({ redirect_uris: ['https://evil.example/cb'] })).status, 400, 'arbitrary redirect hosts must be refused');
+		assert.equal((await register({ redirect_uris: [redirectUri], token_endpoint_auth_method: 'client_secret_basic' })).status, 400, 'confidential clients are not supported');
+		const client = await (await register({ client_name: 'Smoke ChatGPT', redirect_uris: [redirectUri] })).json();
+		assert.ok(client.client_id, 'client registration must return a client_id');
+
+		const verifier = b64u(randomBytes(32));
+		const challenge = b64u(createHash('sha256').update(verifier).digest());
+		const authUrl = (over = {}) => {
+			const u = new URL(origin + '/admin/oauth/authorize');
+			const params = { client_id: client.client_id, redirect_uri: redirectUri, response_type: 'code', code_challenge: challenge, code_challenge_method: 'S256', state: 'xyz', resource: origin + '/mcp', ...over };
+			for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+			return u;
+		};
+		const adminHeaders = { Origin: origin, 'Cf-Access-Jwt-Assertion': adminJwt };
+		assert.notEqual((await fetch(authUrl(), { redirect: 'manual' })).status, 200, 'approval needs the admin login');
+		const consent = await (await fetch(authUrl(), { headers: adminHeaders })).text();
+		assert.ok(consent.includes('Smoke ChatGPT') && consent.includes(redirectUri), 'consent screen must name the app and the full return address');
+		const framed = await fetch(authUrl(), { headers: adminHeaders });
+		assert.equal(framed.headers.get('x-frame-options'), 'DENY', 'admin pages must refuse framing');
+		assert.match(framed.headers.get('content-security-policy') ?? '', /frame-ancestors 'none'/);
+		assert.equal(
+			(await fetch(origin + '/admin/tokens?/create', { method: 'POST', redirect: 'manual', headers: { Origin: 'https://evil.example', 'Cf-Access-Jwt-Assertion': adminJwt }, body: new URLSearchParams({ name: 'csrf' }) })).status,
+			403,
+			'cross-site form posts to the admin must still be blocked',
+		);
+		const badRedirect = await fetch(authUrl({ redirect_uri: 'https://evil.example/cb' }), { headers: adminHeaders, redirect: 'manual' });
+		assert.equal(badRedirect.status, 200, 'an unregistered redirect must show an error, never redirect');
+		assert.ok((await badRedirect.text()).includes('does not match'));
+		assert.ok((await (await fetch(authUrl({ code_challenge_method: 'plain' }), { headers: adminHeaders })).text()).includes('PKCE'), 'PKCE S256 is required');
+
+		const decide = (decision) =>
+			fetch(authUrl(), { method: 'POST', redirect: 'manual', headers: { ...adminHeaders, Accept: 'text/html' }, body: new URLSearchParams({ decision }) });
+		const cancelled = await decide('deny');
+		assert.equal(new URL(cancelled.headers.get('location')).searchParams.get('error'), 'access_denied');
+		const approved = await decide('approve');
+		assert.equal(approved.status, 303);
+		const back = new URL(approved.headers.get('location'));
+		assert.equal(back.origin + back.pathname, redirectUri);
+		assert.equal(back.searchParams.get('state'), 'xyz');
+		const code = back.searchParams.get('code');
+		assert.ok(code, 'approval must return an authorization code');
+
+		const tokenReq = (body) =>
+			fetch(origin + '/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(body) });
+		const exchange = (c, v = verifier) =>
+			tokenReq({ grant_type: 'authorization_code', code: c, redirect_uri: redirectUri, client_id: client.client_id, code_verifier: v });
+		const wrongVerifier = await exchange(new URL((await decide('approve')).headers.get('location')).searchParams.get('code'), b64u(randomBytes(32)));
+		assert.equal(wrongVerifier.status, 400, 'a wrong PKCE verifier must be rejected');
+		const issuedTokens = await (await exchange(code)).json();
+		assert.ok(issuedTokens.access_token?.startsWith('oat_') && issuedTokens.refresh_token?.startsWith('ort_'));
+		assert.equal((await exchange(code)).status, 400, 'an authorization code works once');
+
+		const oauthRpc = (method, params, tok) => rpc(method, params, tok);
+		const tools = (await oauthRpc('tools/list', undefined, issuedTokens.access_token)).body.result.tools.map((t) => t.name);
+		assert.ok(tools.includes('save_entry') && tools.includes('list_form_submissions'), 'an approved connector gets the admin and edit tools');
+		const oauthEdit = (extra) =>
+			oauthRpc('tools/call', { name: 'save_entry', arguments: { collection: model, slug: 'smoke-oauth-entry', ...args, ...extra } }, issuedTokens.access_token);
+		assert.ok(JSON.parse((await oauthEdit({})).body.result.content[0].text).dry_run, 'connector edits preview first');
+		assert.ok(JSON.parse((await oauthEdit({ confirm: true })).body.result.content[0].text).applied, 'connector edits apply on confirm');
+		await page('/admin/tokens', ['Smoke ChatGPT', 'smoke-oauth-entry', 'Connected apps'], true);
+
+		const refreshed = await (await tokenReq({ grant_type: 'refresh_token', refresh_token: issuedTokens.refresh_token, client_id: client.client_id })).json();
+		assert.ok(refreshed.access_token?.startsWith('oat_'));
+		assert.equal(
+			(await tokenReq({ grant_type: 'refresh_token', refresh_token: issuedTokens.refresh_token, client_id: client.client_id })).status,
+			400,
+			'a refresh token is single use',
+		);
+		assert.equal(
+			(await tokenReq({ grant_type: 'refresh_token', refresh_token: refreshed.refresh_token, client_id: client.client_id })).status,
+			400,
+			'replaying a used refresh token must end the whole grant',
+		);
+
+		const disconnect = await fetch(origin + '/admin/tokens?/revokeApp', { method: 'POST', redirect: 'manual', headers: adminHeaders, body: new URLSearchParams({ client_id: client.client_id }) });
+		assert.equal(disconnect.status, 200);
+		assert.equal((await oauthRpc('tools/list', undefined, refreshed.access_token)).status, 401, 'disconnecting an app revokes its tokens');
+		console.log('PASS OAuth connector flow: discovery, PKCE, admin approval, edit tools, refresh, disconnect');
+	}
 	// Alias hosts redirect to the canonical host, preserving path and query (dynamic, not just the homepage).
 	const hostGet = (host, path) =>
 		new Promise((resolveReq, reject) => {

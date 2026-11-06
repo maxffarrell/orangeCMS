@@ -9,6 +9,9 @@ export default defineConfig({
 		tailwindcss(),
 		sveltekit({
 			adapter: adapter(),
+			// SvelteKit's built-in form-POST origin check is off ('*'); hooks.server.ts enforces the same
+			// rule for every route except /oauth/token, whose server-to-server form POSTs have no Origin.
+			csrf: { trustedOrigins: ['*'] },
 			preprocess: vitePreprocess()
 		})
 	],

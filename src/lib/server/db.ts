@@ -772,14 +772,16 @@ export async function recordAudit(
 	]);
 }
 
+/** Needs the oauth_clients table (see ensureOAuthSchema in oauth.ts) for connector names. */
 export async function listAudit(
 	db: D1Database,
 	limit = 50,
 ): Promise<AuditEntry[]> {
 	const result = await db
 		.prepare(
-			`SELECT a.id, a.token_id, t.name AS token_name, a.tool, a.target, a.changes, a.created_at
+			`SELECT a.id, a.token_id, COALESCE(t.name, c.client_name) AS token_name, a.tool, a.target, a.changes, a.created_at
 			   FROM mcp_audit a LEFT JOIN api_tokens t ON t.id = a.token_id
+			   LEFT JOIN oauth_clients c ON a.token_id < 0 AND c.id = -a.token_id
 			  ORDER BY a.id DESC LIMIT ?`,
 		)
 		.bind(limit)

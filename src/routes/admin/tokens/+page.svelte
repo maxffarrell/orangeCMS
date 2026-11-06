@@ -135,6 +135,27 @@
 			</p>
 		</AdminSection>
 
+		<AdminSection title="Connected apps" description="Apps such as ChatGPT or Claude that an admin approved through OAuth. They can edit content until you disconnect them." contentClass="p-0">
+			{#if data.apps.length === 0}
+				<p class="px-6 py-8 text-center text-[0.85rem] text-text-light">No apps connected. Add <code class="font-mono">{data.mcpUrl}</code> as a connector and choose OAuth.</p>
+			{:else}
+				<ul class="divide-y">
+					{#each data.apps as a (a.client_id)}
+						<li class="flex items-center justify-between gap-3 px-6 py-3">
+							<div class="min-w-0">
+								<div class="truncate text-[0.88rem] text-heading">{a.client_name}</div>
+								<div class="font-mono text-[0.7rem] text-text-light">{a.hosts}</div>
+							</div>
+							<form method="POST" action="?/revokeApp" use:enhance>
+								<input type="hidden" name="client_id" value={a.client_id} />
+								<Button type="submit" variant="ghost" size="sm" class="text-text-mid hover:text-red-500">Disconnect</Button>
+							</form>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</AdminSection>
+
 		<AdminSection title="Your tokens" contentClass="p-0">
 			{#if data.tokens.length === 0}
 				<p class="px-6 py-8 text-center text-[0.85rem] text-text-light">

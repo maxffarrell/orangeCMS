@@ -10,7 +10,7 @@ export interface SettingField {
 	label: string;
 	type: 'text' | 'textarea' | 'email' | 'url';
 }
-/** Consumer-owned presentation and URL map. Paths beginning admin, api, files or mcp are reserved. */
+/** Consumer-owned presentation and URL map. Paths beginning admin, api, files, mcp, oauth or .well-known are reserved. */
 export const site = {
 	name: 'orangeCMS',
 	adminName: 'orangeCMS',
