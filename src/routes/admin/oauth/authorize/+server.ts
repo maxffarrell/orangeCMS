@@ -49,8 +49,12 @@ function authorizationFailure(error: unknown) {
 				status: 302,
 				headers: { Location: error.redirectTo, 'Cache-Control': 'no-store' },
 			});
+		// The library's descriptions are fixed, non-sensitive sentences (e.g. "This authorization was
+		// not started in this browser; start again"). Only a signed-in admin reaches this page, and
+		// without the reason a failure cannot be diagnosed (the generic text hid it).
+		console.warn('OAuth consent rejected', error.code, error.description);
 		return page(
-			'<h1>Connection request could not be verified</h1><p>Return to your client and start the connection again.</p>',
+			`<h1>Connection request could not be verified</h1><p>${escape(error.description)}</p><p>Return to your client and start the connection again.</p>`,
 			400,
 		);
 	}
@@ -59,6 +63,7 @@ function authorizationFailure(error: unknown) {
 			'<h1>Client identity is unavailable</h1><p>The client metadata could not be verified. Try again from your client.</p>',
 			400,
 		);
+	console.error('OAuth consent failed', error);
 	return page(
 		'<h1>Connection could not be completed</h1><p>Return to your client and try again.</p>',
 		503,
