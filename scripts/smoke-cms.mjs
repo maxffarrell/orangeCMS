@@ -626,6 +626,37 @@ try {
 		);
 	}
 	console.log('PASS MCP endpoint serves public tools and gates admin tools');
+	// Agent readiness: robots, sitemap, Link headers, Markdown negotiation, discovery documents.
+	const robots = await (await fetch(origin + '/robots.txt')).text();
+	assert.ok(
+		/User-agent: \*/.test(robots) &&
+			/Content-Signal: /.test(robots) &&
+			robots.includes(`Sitemap: ${origin}/sitemap.xml`) &&
+			robots.includes('Disallow: /admin'),
+		'robots.txt must be valid and point to the sitemap',
+	);
+	const sitemap = await fetch(origin + '/sitemap.xml');
+	assert.match(sitemap.headers.get('content-type') ?? '', /xml/);
+	const sitemapText = await sitemap.text();
+	if (homePath) assert.ok(sitemapText.includes(`<loc>${origin}${homePath}</loc>`), 'sitemap must list the home page');
+	if (formPath) assert.ok(sitemapText.includes(`${origin}${formPath}</loc>`), 'sitemap must list online forms');
+	assert.ok(!sitemapText.includes('/admin'), 'sitemap must not list admin routes');
+	const landing = await fetch(origin + (homePath ?? contentPath));
+	assert.match(landing.headers.get('link') ?? '', /rel="api-catalog"/, 'pages must advertise the API catalog');
+	assert.match(landing.headers.get('content-type') ?? '', /text\/html/, 'default representation stays HTML');
+	const markdown = await fetch(origin + (homePath ?? contentPath), { headers: { Accept: 'text/markdown' } });
+	assert.match(markdown.headers.get('content-type') ?? '', /text\/markdown/, 'Accept: text/markdown must return Markdown');
+	assert.ok(!(await markdown.text()).includes('<'), 'Markdown must not contain markup');
+	const browser = await fetch(origin + (homePath ?? contentPath), { headers: { Accept: 'text/html,*/*;q=0.8' } });
+	assert.match(browser.headers.get('content-type') ?? '', /text\/html/);
+	assert.match((await fetch(origin + '/.well-known/api-catalog')).headers.get('content-type') ?? '', /linkset\+json/);
+	assert.equal((await (await fetch(origin + '/.well-known/mcp/server-card.json')).json()).transport.endpoint, '/mcp');
+	const skills = (await (await fetch(origin + '/.well-known/agent-skills/index.json')).json()).skills[0];
+	const skillText = await (await fetch(skills.url.replace(/^https?:\/\/[^/]+/, origin))).text();
+	const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(skillText)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+	assert.equal(skills.digest, `sha256:${digest}`, 'skill digest must match its content');
+	assert.equal((await fetch(origin + '/.well-known/agent-skills/nope/SKILL.md')).status, 404);
+	console.log('PASS agent discovery: robots, sitemap, Link headers, Markdown negotiation, discovery documents');
 	await testOAuth({ origin, adminJwt });
 	// Tokens created in the admin UI authorize MCP; revoking them disables access.
 	const createdToken = await fetch(origin + '/admin/tokens?/create', {

@@ -2,7 +2,9 @@ import { handleOAuthProtocolRequest } from '#lib/server/oauth.js';
 import { site } from '#lib/site.js';
 import { env } from 'cloudflare:workers';
 import { dev } from '$app/env';
+import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle } from '@sveltejs/kit/hooks';
+import { agentReadiness } from '#lib/server/agent-discovery.js';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 let cachedKeys:
@@ -17,7 +19,7 @@ let cachedKeys:
 const CANONICAL_HOST = site.canonicalHost;
 const ALIAS_HOSTS = new Set(site.aliasHosts.map((host) => host.toLowerCase()));
 
-export const handle: Handle = async ({ event, resolve }) => {
+const coreHandle: Handle = async ({ event, resolve }) => {
 	if (CANONICAL_HOST && ALIAS_HOSTS.has(event.url.hostname.toLowerCase())) {
 		return new Response(null, {
 			status: 308,
@@ -81,3 +83,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	return resolve(event);
 };
+
+// Agent readiness (discovery Link headers, Markdown negotiation) wraps the core handling.
+export const handle = sequence(agentReadiness, coreHandle);
